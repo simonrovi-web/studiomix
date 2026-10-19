@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e1015">
+  <title>StudioMix · Entrar como invitado</title>
+  <link rel="stylesheet" href="/guest/style.css">
+</head>
+<body>
+  <main id="join" class="card">
+    <h1>Entrar al directo</h1>
+    <p class="muted">Te verán y escucharán en el programa cuando el realizador te ponga en pantalla.</p>
+    <video id="self" autoplay playsinline muted></video>
+    <label>Tu nombre <input id="name" maxlength="40" placeholder="Nombre que se verá en pantalla" autocomplete="name"></label>
+    <label>Cámara <select id="camera"></select></label>
+    <label>Micrófono <select id="mic"></select></label>
+    <button id="enter" class="primary">Entrar</button>
+    <p id="join-error" class="error" hidden></p>
+  </main>
+
+  <main id="call" class="call" hidden>
+    <div class="program-wrap">
+      <video id="program" autoplay playsinline></video>
+      <span class="tag">LO QUE SE EMITE</span>
+    </div>
+    <video id="self-small" autoplay playsinline muted></video>
+    <div class="controls">
+      <span id="status" class="pill">Conectando…</span>
+      <button id="toggle-mic">🎙 Silenciar</button>
+      <button id="toggle-cam">📷 Apagar cámara</button>
+      <button id="leave" class="danger">Salir</button>
+    </div>
+  </main>
+
+  <script src="/guest/app.js"></script>
+</body>
+</html>

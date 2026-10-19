@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e1015">
+  <title>StudioMix · Mando</title>
+  <link rel="stylesheet" href="/remote/style.css">
+</head>
+<body>
+  <header>
+    <strong>StudioMix</strong>
+    <span id="conn" class="pill">Conectando…</span>
+    <span class="grow"></span>
+    <span id="live" class="pill">EMISIÓN</span>
+    <span id="rec" class="pill">REC</span>
+  </header>
+
+  <section class="names">
+    <div><span class="tag pvw">PVW</span> <span id="pvw-name">—</span></div>
+    <div><span class="tag pgm">PGM</span> <span id="pgm-name">—</span></div>
+  </section>
+
+  <section class="switch">
+    <button id="cut" class="big">CUT</button>
+    <button id="auto" class="big primary">AUTO</button>
+  </section>
+
+  <section id="inputs" class="inputs" aria-label="Entradas"></section>
+  <p class="hint">Toca para Preview · Mantén pulsado para mandar al aire</p>
+
+  <section class="row">
+    <button data-layer="1">Capa 1</button>
+    <button data-layer="2">Capa 2</button>
+    <button data-layer="3">Capa 3</button>
+    <button data-layer="4">Capa 4</button>
+  </section>
+  <section class="row">
+    <button id="ftb">■ Negro</button>
+    <button id="replay-save">💾 Repetición</button>
+    <button id="snapshot">📷 Captura</button>
+  </section>
+
+  <section class="audio">
+    <h2>Audio</h2>
+    <label class="fader"><span>Master</span><input id="master" type="range" min="0" max="125" step="1"></label>
+    <div id="channels"></div>
+  </section>
+
+  <section class="row outputs">
+    <button id="record">⏺ Grabar</button>
+    <button id="stream" class="danger">● Emitir</button>
+  </section>
+
+  <script src="/remote/app.js"></script>
+</body>
+</html>

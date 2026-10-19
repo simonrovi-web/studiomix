@@ -1,0 +1,73 @@
+{
+  "name": "studiomix",
+  "productName": "StudioMix",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Mezclador de vídeo en directo: escenas, gráficos, audio, multistream, vertical, invitados y control remoto.",
+  "author": "StudioMix contributors",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis portable --x64",
+    "dist:dir": "electron-builder --win dir --x64",
+    "release": "electron-builder --win nsis portable --x64 --publish always"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^1.1.1",
+    "electron-updater": "^6.8.9",
+    "ffmpeg-static": "^5.2.0",
+    "qrcode": "^1.5.4",
+    "selfsigned": "^5.5.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "app.studiomix.desktop",
+    "productName": "StudioMix",
+    "directories": {
+      "output": "out",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "remote.js",
+      "guests.js",
+      "renderer/**",
+      "remote/**",
+      "guest/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**"
+    ],
+    "extraFiles": [
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.png"
+    },
+    "portable": {
+      "artifactName": "StudioMix-Portable-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "StudioMix",
+      "artifactName": "StudioMix-Setup-${version}.${ext}"
+    },
+    "publish": null
+  }
+}

@@ -1,0 +1,69 @@
+import { MIDI_ACTIONS, describeBinding } from './midi.js';
+import { app } from './store.js';
+import { ask } from './ui-common.js';
+import { $, h } from './util.js';
+
+let open = false;
+
+export function renderMidiChip() {
+  const midi = app.midi;
+  const chip = $('#chip-midi');
+  const count = midi.inputs.length;
+  chip.textContent = count ? `MIDI ${count}` : 'MIDI —';
+  chip.className = `chip ${count ? 'good' : ''}`;
+  chip.title = count ? `Controladores: ${midi.inputs.join(', ')}` : 'No hay controladores MIDI conectados';
+}
+
+export function renderMidiDialog() {
+  renderMidiChip();
+  if (!open) return;
+  const midi = app.midi;
+  let status;
+  if (!midi.supported) status = 'Este sistema no admite MIDI.';
+  else if (midi.error) status = `No se pudo acceder a MIDI: ${midi.error}`;
+  else if (!midi.inputs.length) status = 'No hay controladores conectados. Conecta uno por USB; aparecerá aquí automáticamente.';
+  else status = `Conectado: ${midi.inputs.join(', ')}`;
+  $('#midi-status').textContent = status;
+
+  const m = midi.lastMessage;
+  $('#midi-monitor').textContent = m
+    ? `Último mensaje: ${m.kind === 'cc' ? 'CC' : 'Nota'} ${m.number} · valor ${m.value} · canal ${m.channel + 1} · ${m.device}`
+    : 'Último mensaje: —';
+
+  const box = $('#midi-actions');
+  const rows = [];
+  let group = null;
+  for (const action of MIDI_ACTIONS) {
+    if (action.group !== group) {
+      group = action.group;
+      rows.push(h('h4', {}, group));
+    }
+    const binding = midi.bindings[action.id];
+    const learning = midi.learning === action.id;
+    rows.push(
+      h(
+        'div',
+        { class: 'midi-row' },
+        h('span', {}, action.label, action.kind === 'fader' ? h('span', { class: 'muted' }, ' (fader)') : null),
+        h('span', { class: `binding ${binding ? 'set' : ''}` }, learning ? 'Mueve un control…' : describeBinding(binding)),
+        h('button', { type: 'button', class: learning ? 'learning' : '', onclick: () => (learning ? midi.cancelLearn() : midi.learn(action.id)) }, learning ? 'Cancelar' : 'Aprender'),
+        h('button', { type: 'button', title: 'Quitar asignación', disabled: !binding, onclick: () => midi.clear(action.id) }, '✕'),
+      ),
+    );
+  }
+  const scroll = box.scrollTop;
+  box.replaceChildren(...rows);
+  box.scrollTop = scroll;
+}
+
+export async function openMidiDialog() {
+  const dlg = $('#dlg-midi');
+  open = true;
+  $('#btn-midi-clear').onclick = () => {
+    if (confirm('¿Borrar todas las asignaciones MIDI?')) app.midi.clearAll();
+  };
+  renderMidiDialog();
+  await ask(dlg);
+  open = false;
+  app.midi.cancelLearn();
+}

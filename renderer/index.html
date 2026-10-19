@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' wss://irc-ws.chat.twitch.tv https://www.googleapis.com">
+  <title>StudioMix</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">●</span> StudioMix</div>
+    <div class="segmented" role="tablist" aria-label="Vista">
+      <button id="view-studio" class="on" role="tab" title="Preview y Program (V)">Estudio</button>
+      <button id="view-multiview" role="tab" title="Todas las entradas a la vez (V)">Multiview</button>
+      <button id="view-vertical" role="tab" title="Salida vertical 9:16 para TikTok, Shorts o Reels">Vertical</button>
+    </div>
+    <div class="chips">
+      <span class="chip" id="chip-fps" title="Fotogramas por segundo de la salida">— fps</span>
+      <span class="chip" id="chip-render" title="Tiempo que tarda en componerse cada fotograma">— ms</span>
+      <span class="chip" id="chip-cpu" title="CPU del sistema">CPU —</span>
+      <span class="chip" id="chip-midi" title="Controladores MIDI conectados">MIDI —</span>
+      <span class="chip" id="chip-remote" title="Mando remoto y API" hidden>Remoto</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="outputs-bar" aria-label="Salidas">
+      <div class="out-group">
+        <button id="btn-record" class="out-btn record" title="Grabar Program en disco"><span class="out-dot"></span><span class="out-label">Grabar</span><span id="record-info" class="out-meta mono"></span></button>
+        <button id="btn-record-pause" class="out-aux" title="Pausar / reanudar la grabación" hidden>⏸</button>
+      </div>
+      <div class="out-group">
+        <button id="btn-replay" class="out-btn replay" title="Búfer de repetición instantánea"><span class="out-label">Replay</span><span id="replay-info" class="out-meta mono"></span></button>
+        <button id="btn-replay-save" class="out-aux" title="Guardar repetición (R)" disabled>💾</button>
+      </div>
+      <div class="out-group">
+        <button id="btn-stream" class="out-btn stream" title="Emitir en directo"><span class="out-dot"></span><span class="out-label">Emitir</span><span id="stream-info" class="out-meta mono"></span></button>
+      </div>
+    </div>
+    <button id="btn-chat" class="ghost icon-btn" title="Chat de la audiencia">💬</button>
+    <button id="btn-menu" class="ghost icon-btn" title="Proyecto, capturas, MIDI, mando remoto…" aria-haspopup="menu">☰</button>
+    <button id="btn-settings" class="ghost icon-btn" title="Ajustes">⚙</button>
+  </header>
+
+  <main class="stage" data-view="studio">
+    <section class="monitor preview">
+      <div class="monitor-label"><span class="tag">PREVIEW</span> <span id="preview-name" class="muted"></span><span class="spacer"></span><button id="btn-scene-dock" class="ghost small" hidden title="Editar las fuentes de la escena">▦ Fuentes</button></div>
+      <div class="screen"><canvas id="preview-canvas"></canvas><canvas id="preview-overlay"></canvas><div id="guide" class="guide" hidden></div></div>
+    </section>
+
+    <section class="monitor multiview">
+      <div class="monitor-label"><span class="tag mv">MULTIVIEW</span> <span class="muted">Clic: a Preview · Doble clic: transición</span></div>
+      <div class="screen"><canvas id="multiview-canvas" width="1280" height="720"></canvas></div>
+    </section>
+
+    <section class="monitor vertical-mon">
+      <div class="monitor-label"><span class="tag vt">VERTICAL 9:16</span> <span id="vertical-status" class="muted"></span></div>
+      <div class="screen" id="vertical-screen"></div>
+    </section>
+
+    <section class="vertical-controls">
+      <h3>Salida vertical</h3>
+      <p class="muted small">Se compone a la vez que la horizontal, para TikTok, Shorts o Reels, con sus propios destinos.</p>
+      <label class="field">Contenido <select id="v-mode">
+        <option value="reframe">Reencuadre de Program (recorte 9:16)</option>
+        <option value="input">Una entrada o escena propia</option>
+      </select></label>
+      <label class="field" id="v-pan-field">Encuadre horizontal <input id="v-pan" type="range" min="-1" max="1" step="0.01"></label>
+      <label class="field" id="v-input-field" hidden>Entrada <select id="v-input"></select></label>
+      <label class="field">Capa gráfica encima <select id="v-overlay"></select></label>
+      <h4>Destinos verticales</h4>
+      <div id="v-dests" class="stack"></div>
+      <select id="v-dest-preset">
+        <option value="">Añadir destino…</option>
+        <option value="TikTok|rtmp://">TikTok (pega servidor y clave de TikTok LIVE)</option>
+        <option value="YouTube Shorts|rtmp://a.rtmp.youtube.com/live2">YouTube (directo vertical)</option>
+        <option value="Instagram|rtmps://">Instagram (pega servidor y clave)</option>
+        <option value="Personalizado|rtmp://">Personalizado</option>
+      </select>
+      <label class="field">Bitrate de vídeo (kbps) <input id="v-kbps" type="number" min="1000" max="20000" step="100"></label>
+      <div class="row nowrap">
+        <button type="button" id="btn-vstream" class="danger">● Emitir vertical</button>
+        <button type="button" id="btn-vrecord">⏺ Grabar vertical</button>
+      </div>
+      <p class="muted small" id="v-info"></p>
+    </section>
+
+    <section class="transition-panel">
+      <div class="cut-auto">
+        <button id="btn-cut" class="big" title="Espacio">CUT</button>
+        <button id="btn-auto" class="big accent" title="Intro">AUTO</button>
+      </div>
+      <div class="progress"><div id="trans-progress"></div></div>
+      <label class="field">Transición
+        <span class="row nowrap"><select id="trans-type"></select><button type="button" id="btn-trans-options" title="Opciones de la transición">⚙</button></span>
+      </label>
+      <label class="field">Duración (ms)
+        <input id="trans-duration" type="number" min="100" max="5000" step="100">
+      </label>
+      <div class="tbar-wrap"><input id="tbar" type="range" min="0" max="100" value="0" title="T-bar"></div>
+      <div class="overlay-buttons" id="overlay-buttons"></div>
+      <button id="btn-ftb" class="ftb" title="Fundido a negro de toda la salida, imagen y sonido (B)">■ Negro</button>
+    </section>
+
+    <section class="monitor program">
+      <div class="monitor-label"><span class="tag">PROGRAM</span> <span id="program-name" class="muted"></span><span class="spacer"></span><span id="program-remaining" class="muted mono"></span></div>
+      <div class="screen"><canvas id="program-canvas"></canvas></div>
+    </section>
+  </main>
+
+  <section class="inputs-bar">
+    <div id="inputs" class="inputs">
+      <div id="inputs-empty" class="empty">Aquí aparecerán tus fuentes: cámaras, vídeos, imágenes, pantallas, títulos…</div>
+    </div>
+    <div class="add-input">
+      <button id="btn-add" class="accent">+ Añadir entrada</button>
+      <div id="add-menu" class="menu" hidden>
+        <button data-add="scene">▦ Escena (capas)</button>
+        <button data-add="camera">📷 Cámara</button>
+        <button data-add="mic">🎙 Micrófono</button>
+        <button data-add="video">🎞 Vídeo</button>
+        <button data-add="image">🖼 Imagen</button>
+        <button data-add="audio">♪ Audio</button>
+        <button data-add="screen">🖥 Pantalla / ventana</button>
+        <button data-add="network">🌐 Red (SRT, RTSP, RTMP…)</button>
+        <button data-add="guest">👤 Invitado remoto</button>
+        <button data-add="color">■ Color o degradado</button>
+        <button data-add="title">T Título / gráfico</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="bottom">
+    <section class="mixer">
+      <div id="mixer-strips" class="strips"></div>
+      <div id="master-strip" class="strips master"></div>
+    </section>
+    <section class="stats panel">
+      <h3>Rendimiento</h3>
+      <div id="charts" class="charts"></div>
+    </section>
+  </footer>
+
+
+  <!-- Columna lateral: paneles que no tapan los monitores ni bloquean los atajos -->
+  <aside id="side" aria-label="Panel lateral">
+  <!-- Emitir en directo (panel lateral, no modal) -->
+  <dialog id="dlg-golive" class="panel" aria-labelledby="golive-title">
+    <div class="dock-head"><h2 id="golive-title">Emitir en directo</h2><button type="button" id="btn-golive-close" class="ghost" title="Cerrar">✕</button></div>
+    <div class="stack">
+      <div class="field">¿Dónde emites?</div>
+      <div id="golive-presets" class="dest-presets"></div>
+      <div id="golive-dests" class="stack"></div>
+      <h4>Comprobación previa</h4>
+      <ul id="golive-checks" class="preflight"></ul>
+      <div class="speedtest">
+        <button type="button" id="btn-speedtest" title="Envía unos MB de datos de prueba a speed.cloudflare.com para medir tu subida">Probar mi conexión</button>
+        <span id="speedtest-result" class="muted small"></span>
+      </div>
+      <button type="button" id="btn-golive-advanced" class="ghost small link">Calidad, codificador y más destinos…</button>
+      <button type="button" id="btn-golive-start" class="danger big">● Empezar emisión</button>
+      <p class="muted small">Empieza tras una cuenta atrás de 3 s que puedes cancelar.</p>
+    </div>
+  </dialog>
+
+  <!-- Fuentes de escena (no modal: se edita Preview a la vez) -->
+  <dialog id="dlg-scene" class="panel">
+    <div class="dock-head"><h2 id="scene-title">Fuentes de escena</h2><button type="button" id="btn-close-scene" class="ghost" title="Cerrar">✕</button></div>
+    <div id="scene-body" class="stack"></div>
+  </dialog>
+
+  <!-- Ajustes de entrada -->
+  <dialog id="dlg-input" class="panel wide">
+    <form method="dialog">
+      <h2 id="input-dlg-heading">Entrada</h2>
+      <div class="tabs" role="tablist">
+        <button type="button" data-tab="general" class="on">General</button>
+        <button type="button" data-tab="framing" data-only="video-fx">Ajuste y recorte</button>
+        <button type="button" data-tab="effects">Efectos y chroma key</button>
+      </div>
+      <div class="two-col">
+        <div>
+          <div class="tab-page stack" data-page="general">
+            <label class="field">Nombre <input name="name"></label>
+            <label class="field">Posición como overlay <select name="layout"></select></label>
+            <label class="field check" data-only="loop"><input name="loop" type="checkbox"> Reproducir en bucle</label>
+            <button type="button" id="btn-edit-title" data-only="title">Editar textos y plantilla…</button>
+          </div>
+          <div class="tab-page stack" data-page="framing" hidden>
+            <div class="field">Encaje en el cuadro
+              <div class="segmented wide" id="fit-buttons">
+                <button type="button" data-fit="contain" title="Se ve entero, con bandas si la forma no coincide">Ajustar</button>
+                <button type="button" data-fit="cover" title="Llena el cuadro recortando lo que sobra">Rellenar</button>
+                <button type="button" data-fit="stretch" title="Llena el cuadro deformando la imagen">Estirar</button>
+              </div>
+              <input type="hidden" name="fit">
+            </div>
+            <div class="field">Rotación
+              <div class="segmented wide" id="rotate-buttons">
+                <button type="button" data-rotate="0">0°</button>
+                <button type="button" data-rotate="90">90°</button>
+                <button type="button" data-rotate="180">180°</button>
+                <button type="button" data-rotate="270">270°</button>
+              </div>
+              <input type="hidden" name="rotate">
+            </div>
+            <label class="field check"><input name="flip" type="checkbox"> Espejo horizontal</label>
+            <fieldset>
+              <legend>Recorte</legend>
+              <div class="row nowrap">
+                <label class="field grow-field">Proporción <select id="crop-aspect">
+                  <option value="">Libre</option>
+                  <option value="1.7778">16:9</option>
+                  <option value="0.5625">9:16 (vertical)</option>
+                  <option value="1.3333">4:3</option>
+                  <option value="1">1:1 (cuadrado)</option>
+                  <option value="0.8">4:5</option>
+                  <option value="2.3333">21:9</option>
+                </select></label>
+                <button type="button" id="btn-crop-reset">Sin recorte</button>
+              </div>
+              <div class="grid-4">
+                <label class="field">Izq. (px) <input type="number" min="0" data-crop="cropL"></label>
+                <label class="field">Der. (px) <input type="number" min="0" data-crop="cropR"></label>
+                <label class="field">Arriba (px) <input type="number" min="0" data-crop="cropT"></label>
+                <label class="field">Abajo (px) <input type="number" min="0" data-crop="cropB"></label>
+              </div>
+              <p class="muted small">Arrastra el recuadro en la imagen de la derecha: los bordes y esquinas lo ajustan, el interior lo mueve y arrastrar fuera dibuja uno nuevo.</p>
+            </fieldset>
+            <fieldset>
+              <legend>Zoom y encuadre</legend>
+              <label class="field">Zoom <input name="zoom" type="range" min="1" max="5" step="0.01"><output data-for="zoom"></output></label>
+              <div class="grid-2">
+                <label class="field">Horizontal <input name="panX" type="range" min="-1" max="1" step="0.01"></label>
+                <label class="field">Vertical <input name="panY" type="range" min="-1" max="1" step="0.01"></label>
+              </div>
+            </fieldset>
+            <button type="button" id="btn-reset-framing">Restablecer ajuste y recorte</button>
+          </div>
+          <div class="tab-page stack" data-page="effects" hidden>
+            <fieldset data-only="video-fx">
+              <legend><label class="check"><input name="removeBg" type="checkbox"> Quitar fondo sin croma (IA)</label></legend>
+              <p class="muted small">Detecta a la persona y vuelve transparente el resto, sin tela verde. Ponla en una escena encima de otro fondo. La primera vez descarga el modelo de MediaPipe (≈250 KB) de Google.</p>
+            </fieldset>
+            <fieldset data-only="video-fx">
+              <legend><label class="check"><input name="keyOn" type="checkbox"> Clave (quitar fondo)</label></legend>
+              <label class="field">Tipo <select name="keyType">
+                <option value="chroma">Chroma key (croma verde/azul)</option>
+                <option value="color">Color key (un color exacto)</option>
+                <option value="luma">Luma key (por brillo)</option>
+              </select></label>
+              <div class="row" data-key-type="chroma color">
+                <label class="field">Color <input name="keyColor" type="color"></label>
+                <button type="button" data-key="#00ff00">Verde</button>
+                <button type="button" data-key="#0000ff">Azul</button>
+                <button type="button" data-key="#000000">Negro</button>
+              </div>
+              <label class="field" data-key-type="chroma color">Similitud <input name="similarity" type="range" min="0.01" max="1" step="0.01"></label>
+              <label class="field" data-key-type="chroma color">Suavidad <input name="smoothness" type="range" min="0.001" max="0.5" step="0.001"></label>
+              <label class="field" data-key-type="chroma">Reducción de derrame <input name="spill" type="range" min="0.001" max="0.5" step="0.001"></label>
+              <div class="grid-3" data-key-type="luma">
+                <label class="field">Brillo mínimo <input name="lumaMin" type="range" min="0" max="1" step="0.01"></label>
+                <label class="field">Brillo máximo <input name="lumaMax" type="range" min="0" max="1" step="0.01"></label>
+                <label class="field">Suavizado <input name="lumaSmooth" type="range" min="0" max="0.5" step="0.01"></label>
+              </div>
+            </fieldset>
+            <fieldset data-only="video-fx">
+              <legend>Corrección de color</legend>
+              <div class="grid-2">
+                <label class="field">Brillo <input name="brightness" type="range" min="-0.5" max="0.5" step="0.01"></label>
+                <label class="field">Contraste <input name="contrast" type="range" min="0.3" max="2" step="0.01"></label>
+                <label class="field">Saturación <input name="saturation" type="range" min="0" max="2" step="0.01"></label>
+                <label class="field">Gamma <input name="gamma" type="range" min="0.3" max="3" step="0.01"></label>
+                <label class="field">Tono (°) <input name="hue" type="range" min="-180" max="180" step="1"></label>
+                <label class="field">Enfoque <input name="sharpen" type="range" min="0" max="1" step="0.01"></label>
+              </div>
+            </fieldset>
+            <fieldset data-only="video-fx">
+              <legend>Etalonaje (LUT)</legend>
+              <div class="row nowrap">
+                <select name="lut"></select>
+                <button type="button" id="btn-load-lut" title="Cargar un archivo .cube">.cube…</button>
+              </div>
+              <label class="field">Intensidad <input name="lutAmount" type="range" min="0" max="1" step="0.01"></label>
+            </fieldset>
+            <fieldset data-only="video-fx">
+              <legend>Máscara de imagen</legend>
+              <div class="row nowrap">
+                <span id="mask-name" class="muted small grow">Sin máscara</span>
+                <button type="button" id="btn-load-mask">Elegir imagen…</button>
+                <button type="button" id="btn-clear-mask" title="Quitar máscara">✕</button>
+              </div>
+              <div class="row">
+                <label class="field">Usar <select name="maskMode"><option value="alpha">Transparencia de la imagen</option><option value="luma">Brillo de la imagen</option></select></label>
+                <label class="field check"><input name="maskInvert" type="checkbox"> Invertir</label>
+              </div>
+            </fieldset>
+            <fieldset data-only="video-fx">
+              <legend>Desplazamiento continuo</legend>
+              <div class="grid-2">
+                <label class="field">Horizontal <input name="scrollX" type="range" min="-1" max="1" step="0.01"></label>
+                <label class="field">Vertical <input name="scrollY" type="range" min="-1" max="1" step="0.01"></label>
+              </div>
+            </fieldset>
+            <label class="field">Opacidad <input name="opacity" type="range" min="0" max="1" step="0.01"></label>
+            <button type="button" id="btn-reset-fx">Restablecer efectos</button>
+          </div>
+        </div>
+        <div class="stack">
+          <canvas id="crop-editor" width="640" height="400" hidden></canvas>
+          <canvas id="input-preview" width="640" height="360"></canvas>
+          <p class="muted small" id="input-preview-note">Los cambios se aplican en directo.</p>
+        </div>
+      </div>
+      <menu><button value="ok" class="accent">Cerrar</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Efectos de audio -->
+  <dialog id="dlg-audio" class="panel">
+    <form method="dialog">
+      <h2 id="audio-dlg-heading">Audio</h2>
+      <div class="grid-2">
+        <label class="field">Ganancia (dB) <input name="trim" type="range" min="-20" max="20" step="0.5"><output data-for="trim"></output></label>
+        <label class="field">Retardo (ms) <input name="delay" type="range" min="0" max="500" step="5"><output data-for="delay"></output></label>
+        <label class="field">Panorama <input name="pan" type="range" min="-1" max="1" step="0.05"><output data-for="pan"></output></label>
+        <label class="field check"><input name="hpf" type="checkbox"> Filtro de graves (80 Hz)</label>
+      </div>
+      <fieldset>
+        <legend><label class="check"><input name="noise" type="checkbox"> Supresión de ruido</label></legend>
+        <label class="field">Nivel de supresión (dB) <input name="noiseLevel" type="range" min="-60" max="0" step="1"><output data-for="noiseLevel"></output></label>
+        <p class="muted small">Quita ruido de fondo constante (ventiladores, zumbidos). Añade unos 11 ms de retardo.</p>
+      </fieldset>
+      <fieldset>
+        <legend><label class="check"><input name="gate" type="checkbox"> Puerta / expansor</label></legend>
+        <div class="grid-2">
+          <label class="field">Modo <select name="gateMode"><option value="gate">Puerta (corta el silencio)</option><option value="expander">Expansor (atenúa suave)</option></select></label>
+          <label class="field">Umbral (dB) <input name="gateThreshold" type="range" min="-80" max="-10" step="1"><output data-for="gateThreshold"></output></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Ecualizador</legend>
+        <div class="grid-3">
+          <label class="field">Graves <input name="eqLow" type="range" min="-15" max="15" step="0.5"><output data-for="eqLow"></output></label>
+          <label class="field">Medios <input name="eqMid" type="range" min="-15" max="15" step="0.5"><output data-for="eqMid"></output></label>
+          <label class="field">Agudos <input name="eqHigh" type="range" min="-15" max="15" step="0.5"><output data-for="eqHigh"></output></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend><label class="check"><input name="comp" type="checkbox"> Compresor</label></legend>
+        <div class="grid-2">
+          <label class="field">Umbral (dB) <input name="compThreshold" type="range" min="-50" max="0" step="1"><output data-for="compThreshold"></output></label>
+          <label class="field">Ratio <input name="compRatio" type="range" min="1" max="20" step="0.5"><output data-for="compRatio"></output></label>
+        </div>
+      </fieldset>
+      <div class="grid-2">
+        <fieldset>
+          <legend><label class="check"><input name="limit" type="checkbox"> Limitador</label></legend>
+          <label class="field">Techo (dB) <input name="limitThreshold" type="range" min="-30" max="0" step="0.5"><output data-for="limitThreshold"></output></label>
+        </fieldset>
+        <fieldset>
+          <legend>Ducking (voz sobre música)</legend>
+          <label class="field check"><input name="duckVoice" type="checkbox"> Es voz: baja la música cuando suena</label>
+          <label class="field check"><input name="ducked" type="checkbox"> Bajar este canal cuando hay voz</label>
+          <label class="field">Cuánto baja (dB) <input name="duckAmount" type="range" min="-30" max="-3" step="1"><output data-for="duckAmount"></output></label>
+        </fieldset>
+        <fieldset>
+          <legend>Monitorización</legend>
+          <label class="field">Escuchar este canal <select name="monitor">
+            <option value="off">No (solo salida)</option>
+            <option value="monitor">Monitorizar y salida</option>
+            <option value="only">Solo monitorizar (no sale)</option>
+          </select></label>
+        </fieldset>
+      </div>
+      <menu><button type="button" id="btn-reset-audio">Restablecer</button><button value="ok" class="accent">Cerrar</button></menu>
+    </form>
+  </dialog>
+  <dialog id="dlg-chat" class="panel" aria-labelledby="chat-title">
+    <div class="dock-head"><h2 id="chat-title">Chat de la audiencia</h2><button type="button" id="btn-chat-close" class="ghost" title="Cerrar">✕</button></div>
+    <div class="stack chat-layout">
+      <details class="chat-sources" open>
+        <summary>Conectar chats</summary>
+        <div class="stack">
+          <label class="field">Twitch: nombre del canal
+            <span class="row nowrap"><input id="chat-twitch" placeholder="micanal" autocomplete="off"><button type="button" id="btn-chat-twitch">Conectar</button></span>
+          </label>
+          <span id="chat-twitch-status" class="chip">Desconectado</span>
+          <label class="field">YouTube: enlace o ID del directo <input id="chat-yt-video" placeholder="https://youtube.com/live/…" autocomplete="off"></label>
+          <label class="field">Clave de API de YouTube Data <input id="chat-yt-key" type="password" placeholder="AIza…" autocomplete="off"></label>
+          <span class="row nowrap"><button type="button" id="btn-chat-yt">Conectar YouTube</button><span id="chat-yt-status" class="chip">Desconectado</span></span>
+          <p class="muted small">Twitch se lee sin iniciar sesión. YouTube necesita una clave gratuita de Google Cloud (API «YouTube Data API v3»); cada consulta gasta cuota.</p>
+        </div>
+      </details>
+      <div class="row nowrap">
+        <label class="field">Mostrar en <select id="chat-layer"><option value="1">Capa 1</option><option value="2">Capa 2</option><option value="3">Capa 3</option><option value="4">Capa 4</option></select></label>
+        <button type="button" id="btn-chat-hide">Quitar de pantalla</button>
+        <button type="button" id="btn-chat-clear" class="ghost" title="Vaciar la lista">Vaciar</button>
+      </div>
+      <div id="chat-messages" class="chat-messages"></div>
+    </div>
+  </dialog>
+  </aside>
+
+  <div id="media-host" aria-hidden="true"></div>
+  <div id="toasts" aria-live="polite"></div>
+
+
+
+  <!-- Invitados remotos -->
+  <dialog id="dlg-guests" class="wide">
+    <form method="dialog">
+      <h2>Invitados remotos</h2>
+      <label class="field check"><input id="guests-enabled" type="checkbox"> Permitir que entren invitados (red local)</label>
+      <div id="guests-body" class="stack"></div>
+      <menu><button value="ok" class="accent">Cerrar</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Mando remoto y API -->
+  <dialog id="dlg-remote" class="wide">
+    <form method="dialog">
+      <h2>Mando remoto y Stream Deck</h2>
+      <div class="row">
+        <label class="field check"><input name="enabled" type="checkbox"> Activar el control desde la red local</label>
+        <label class="field">Puerto <input name="port" type="number" min="1024" max="65535" style="width: 100px"></label>
+      </div>
+      <div id="remote-body" class="stack"></div>
+      <menu><button value="ok" class="accent">Cerrar</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Opciones de transición -->
+  <dialog id="dlg-transition">
+    <form method="dialog">
+      <h2>Opciones de transición</h2>
+      <fieldset>
+        <legend>Luma wipe</legend>
+        <label class="field">Patrón <select name="pattern"></select></label>
+        <label class="field">Suavidad del borde <input name="softness" type="range" min="0" max="0.5" step="0.01"></label>
+        <label class="field check"><input name="invert" type="checkbox"> Invertir dirección</label>
+      </fieldset>
+      <fieldset>
+        <legend>Stinger</legend>
+        <div class="row nowrap">
+          <span id="stinger-name" class="muted small grow">Sin clip</span>
+          <button type="button" id="btn-stinger-file">Elegir vídeo…</button>
+          <button type="button" id="btn-stinger-clear" title="Quitar clip">✕</button>
+        </div>
+        <label class="field">Punto de corte (ms desde el inicio del clip) <input name="cutPoint" type="number" min="0" max="20000" step="10"></label>
+        <p class="muted small">Usa un vídeo WebM con transparencia (VP9 + alfa) para que se vea la escena por debajo. El cambio de plano ocurre en el punto de corte, mientras el clip sigue reproduciéndose. El clip del stinger se guarda en el proyecto.</p>
+      </fieldset>
+      <menu><button value="ok" class="accent">Cerrar</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Entrada de red -->
+  <dialog id="dlg-network">
+    <form method="dialog">
+      <h2>Entrada de red</h2>
+      <div class="segmented wide" id="net-mode">
+        <button type="button" data-mode="listen" class="on">Recibir por SRT</button>
+        <button type="button" data-mode="url">Conectar a una dirección</button>
+      </div>
+      <div data-net="listen" class="stack">
+        <label class="field">Puerto SRT <input name="port" type="number" value="9000" min="1024" max="65535"></label>
+        <p class="muted small" id="net-listen-help"></p>
+      </div>
+      <div data-net="url" class="stack" hidden>
+        <label class="field">Dirección <input name="url" placeholder="rtsp://192.168.1.50:554/stream"></label>
+        <p class="muted small">Cámaras IP (rtsp://), SRT (srt://servidor:puerto), RTMP, UDP o listas HLS (.m3u8).</p>
+      </div>
+      <label class="field">Nombre <input name="name" value="Cámara de red"></label>
+      <menu><button value="cancel" formnovalidate>Cancelar</button><button value="ok" class="accent">Añadir</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Cámara -->
+  <dialog id="dlg-camera">
+    <form method="dialog">
+      <h2>Añadir cámara</h2>
+      <label class="field">Nombre <input name="name" value="Cámara"></label>
+      <label class="field">Vídeo <select name="video"></select></label>
+      <label class="field">Audio <select name="audio"></select></label>
+      <menu><button value="cancel" formnovalidate>Cancelar</button><button value="ok" class="accent">Añadir</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Micrófono -->
+  <dialog id="dlg-mic">
+    <form method="dialog">
+      <h2>Añadir micrófono</h2>
+      <label class="field">Nombre <input name="name" value="Micrófono"></label>
+      <label class="field">Dispositivo <select name="audio"></select></label>
+      <menu><button value="cancel" formnovalidate>Cancelar</button><button value="ok" class="accent">Añadir</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Pantalla -->
+  <dialog id="dlg-screen" class="wide">
+    <form method="dialog">
+      <h2>Capturar pantalla o ventana</h2>
+      <p class="muted">Al capturar una pantalla completa en Windows también se captura el audio del sistema.</p>
+      <div id="screen-sources" class="source-grid"></div>
+      <menu><button value="cancel" formnovalidate>Cancelar</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Color -->
+  <dialog id="dlg-color">
+    <form method="dialog">
+      <h2>Añadir color</h2>
+      <label class="field">Nombre <input name="name" value="Color"></label>
+      <div class="row">
+        <label class="field">Color <input name="color" type="color" value="#1f4fd8"></label>
+        <label class="field check"><input name="gradient" type="checkbox"> Degradado hasta</label>
+        <label class="field">&nbsp;<input name="color2" type="color" value="#7b2ff7"></label>
+      </div>
+      <menu><button value="cancel" formnovalidate>Cancelar</button><button value="ok" class="accent">Añadir</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Título -->
+  <dialog id="dlg-title" class="wide">
+    <form method="dialog">
+      <h2 id="title-dlg-heading">Título</h2>
+      <div class="two-col">
+        <div class="stack">
+          <label class="field">Nombre de la entrada <input name="name"></label>
+          <label class="field">Plantilla <select name="template"></select></label>
+          <div id="title-fields" class="stack"></div>
+          <details id="title-list-box">
+            <summary>Lista de rótulos para ir pasando</summary>
+            <div class="stack">
+              <textarea name="list" rows="5" placeholder="Ana García | Directora técnica&#10;Luis Pérez | Invitado&#10;…"></textarea>
+              <div class="row nowrap"><button type="button" id="btn-title-csv">Cargar CSV o TXT…</button><span class="muted small">Una línea por rótulo. Separa los textos con | ; o ,</span></div>
+            </div>
+          </details>
+          <div class="row">
+            <label class="field">Acento <input name="accent" type="color"></label>
+            <label class="field">Texto <input name="textColor" type="color"></label>
+            <label class="field">Fondo <input name="bgColor" type="color"></label>
+          </div>
+          <label class="field">Opacidad del fondo <input name="bgOpacity" type="range" min="0" max="1" step="0.05"></label>
+        </div>
+        <div class="stack">
+          <canvas id="title-preview" width="640" height="360"></canvas>
+          <p class="muted small">Vista previa con la animación de entrada. Los marcadores y las cuentas atrás se controlan desde la tarjeta de la entrada.</p>
+        </div>
+      </div>
+      <menu><button value="cancel" formnovalidate>Cancelar</button><button value="ok" class="accent">Guardar</button></menu>
+    </form>
+  </dialog>
+
+
+
+  <!-- MIDI -->
+  <dialog id="dlg-midi" class="wide">
+    <form method="dialog">
+      <h2>Controlador MIDI</h2>
+      <p id="midi-status" class="muted"></p>
+      <p class="muted small">Pulsa «Aprender» y mueve un botón, pad o fader de tu controlador. Los faders y el T-bar necesitan un control CC. Los botones asignados a notas encienden su LED como tally.</p>
+      <div id="midi-monitor" class="midi-monitor mono">Último mensaje: —</div>
+      <div id="midi-actions" class="midi-actions"></div>
+      <menu><button type="button" id="btn-midi-clear">Borrar todas</button><button value="ok" class="accent">Cerrar</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Ajustes generales -->
+  <dialog id="dlg-settings" class="wide">
+    <form method="dialog">
+      <h2>Ajustes</h2>
+      <div class="two-col">
+        <div class="stack">
+          <fieldset>
+            <legend>Vídeo</legend>
+            <div class="grid-2">
+              <label class="field">Resolución <select name="resolution">
+                <option value="1920x1080">1920 × 1080 (1080p)</option>
+                <option value="1280x720">1280 × 720 (720p)</option>
+                <option value="1080x1920">1080 × 1920 (vertical)</option>
+              </select></label>
+              <label class="field">Fotogramas por segundo <select name="fps">
+                <option>25</option><option>30</option><option>50</option><option>60</option>
+              </select></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Codificación</legend>
+            <label class="field">Codificador de emisión <select name="encoder"></select></label>
+            <label class="field">Preset x264 (CPU) <select name="x264Preset">
+              <option value="ultrafast">ultrafast (menos CPU)</option>
+              <option value="superfast">superfast</option>
+              <option value="veryfast">veryfast (recomendado)</option>
+              <option value="faster">faster</option>
+              <option value="fast">fast (más calidad)</option>
+            </select></label>
+            <div class="grid-2">
+              <label class="field">Bitrate de vídeo (kbps) <input name="streamVideoKbps" type="number" min="300" max="50000"></label>
+              <label class="field">Bitrate de audio (kbps) <input name="audioKbps" type="number" min="64" max="320"></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Grabación</legend>
+            <label class="field">Carpeta
+              <span class="row"><input name="recordFolder" readonly><button type="button" id="btn-choose-folder">Elegir…</button></span>
+            </label>
+            <div class="grid-2">
+              <label class="field">Formato <select name="recordFormat">
+                <option value="mp4">MP4 (H.264 + AAC)</option>
+                <option value="mkv">MKV (sin recodificar)</option>
+              </select></label>
+              <label class="field">Calidad (Mbps) <input name="recordMbps" type="number" min="2" max="80"></label>
+            </div>
+            <label class="field check"><input name="isoRecording" type="checkbox"> Grabar también cada fuente por separado (ISO), para editar después</label>
+          </fieldset>
+          <fieldset>
+            <legend>Repetición instantánea</legend>
+            <div class="grid-2">
+              <label class="field">Segundos que se guardan <input name="replaySeconds" type="number" min="5" max="300"></label>
+              <label class="field check"><input name="replayAsInput" type="checkbox"> Añadir cada repetición como entrada</label>
+            </div>
+          </fieldset>
+          <label class="field check"><input name="limiter" type="checkbox"> Limitador en el master (evita saturar el audio)</label>
+        </div>
+        <fieldset>
+          <legend>Destinos de emisión (multistream)</legend>
+          <p class="muted small">Se emite a todos los destinos activos a la vez con una sola codificación.</p>
+          <div id="destinations" class="stack"></div>
+          <div class="row">
+            <select id="dest-preset">
+              <option value="">Añadir destino…</option>
+              <option value="YouTube|rtmp://a.rtmp.youtube.com/live2">YouTube</option>
+              <option value="Twitch|rtmp://live.twitch.tv/app">Twitch</option>
+              <option value="Facebook|rtmps://live-api-s.facebook.com:443/rtmp">Facebook</option>
+              <option value="Kick|rtmps://">Kick (pega el servidor de tu panel)</option>
+              <option value="Personalizado|rtmp://">Personalizado</option>
+            </select>
+          </div>
+        </fieldset>
+      </div>
+      <p id="settings-note" class="muted small"></p>
+      <menu><button value="cancel" formnovalidate>Cancelar</button><button value="ok" class="accent">Guardar</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Atajos -->
+  <dialog id="dlg-help">
+    <form method="dialog">
+      <h2>Atajos de teclado</h2>
+      <table class="keys">
+        <tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>Enviar entrada a Preview</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>9</kbd></td><td>Entrada directa a Program (cut)</td></tr>
+        <tr><td><kbd>Espacio</kbd></td><td>Cut (Preview ↔ Program)</td></tr>
+        <tr><td><kbd>Intro</kbd></td><td>Transición automática</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>1</kbd>–<kbd>4</kbd></td><td>Poner o quitar la entrada de Preview como capa 1–4</td></tr>
+        <tr><td><kbd>B</kbd></td><td>Fundido a negro de la salida</td></tr>
+        <tr><td><kbd>V</kbd></td><td>Cambiar entre Estudio y Multiview</td></tr>
+        <tr><td><kbd>S</kbd></td><td>Captura de Program</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>Guardar / abrir proyecto</td></tr>
+      </table>
+      <p class="muted small">En las tarjetas: clic para Preview, doble clic para transición, arrastrar para reordenar.</p>
+      <menu><button value="ok" class="accent">Cerrar</button></menu>
+    </form>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
