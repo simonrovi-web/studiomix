@@ -93,3 +93,9 @@ test('parseOutputUrl accepts only output pages with a known source', () => {
   assert.equal(screens.parseOutputUrl('https://example.com/output.html?source=program'), null);
   assert.equal(screens.parseOutputUrl('not a url'), null);
 });
+
+test('Tailscale addresses (100.64.0.0/10) are told apart from the local network', () => {
+  const { isTailscaleIp } = require('../main/remote.js');
+  for (const ip of ['100.64.0.1', '100.101.5.9', '100.127.255.254']) assert.ok(isTailscaleIp(ip), ip);
+  for (const ip of ['100.63.255.255', '100.128.0.1', '192.168.1.7', '10.0.0.5']) assert.ok(!isTailscaleIp(ip), ip);
+});

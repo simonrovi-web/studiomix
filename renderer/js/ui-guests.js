@@ -101,6 +101,19 @@ async function renderDialog(info) {
         h('p', { class: 'muted small' }, 'El invitado verá un aviso de seguridad la primera vez (el certificado es de este equipo): debe pulsar «Configuración avanzada» → «Continuar». Recibe lo que se emite y oye el programa sin su propia voz.'),
       ),
     ),
+    h('h4', {}, 'Invitados fuera de tu red (Tailscale)'),
+    info.tailscaleUrls?.length
+      ? h('div', { class: 'remote-qr' },
+          info.tailscaleQr ? h('img', { src: info.tailscaleQr, alt: 'Código QR de invitación por Tailscale' }) : null,
+          h('div', { class: 'stack' },
+            ...info.tailscaleUrls.map((u) => h('code', { class: 'copyable', title: 'Clic para copiar', onclick: () => navigator.clipboard.writeText(u).then(() => toast('Enlace copiado')) }, u)),
+            h('p', { class: 'muted small' }, 'Para quien está en otra casa o ciudad: debe tener Tailscale instalado y abierto, unido a tu red de Tailscale (invítalo desde tu cuenta). Después abre este enlace como cualquier invitado.'),
+          ),
+        )
+      : h('p', { class: 'muted small' },
+          'Para traer invitados desde fuera de tu red sin servidor: instala Tailscale (gratis para uso personal) en este equipo y en el del invitado, y únelo a tu red. Cuando Tailscale esté activo aparecerá aquí su enlace. ',
+          h('a', { href: 'https://tailscale.com/download', target: '_blank', rel: 'noopener' }, 'Descargar Tailscale'),
+        ),
     h('h4', {}, `Conectados (${peers.size})`),
     ...(peers.size
       ? [...peers.entries()].map(([id, p]) =>

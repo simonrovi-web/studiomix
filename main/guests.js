@@ -11,7 +11,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { WebSocketServer } = require('ws');
 const QRCode = require('qrcode');
-const { lanAddresses } = require('./remote.js');
+const { lanAddresses, tailscaleAddresses } = require('./remote.js');
 
 const log = require('./log').scope('guests');
 
@@ -59,7 +59,7 @@ class GuestServer {
       // Generate a new one below.
     }
     const selfsigned = require('selfsigned');
-    const altNames = [{ type: 2, value: 'localhost' }, { type: 7, ip: '127.0.0.1' }, ...lanAddresses().map((ip) => ({ type: 7, ip }))];
+    const altNames = [{ type: 2, value: 'localhost' }, { type: 7, ip: '127.0.0.1' }, ...[...lanAddresses(), ...tailscaleAddresses()].map((ip) => ({ type: 7, ip }))];
     const pems = await selfsigned.generate([{ name: 'commonName', value: 'StudioMix' }], { days: 825, keySize: 2048, extensions: [{ name: 'subjectAltName', altNames }] });
     const cert = { key: pems.private, cert: pems.cert, expires: Date.now() + 800 * 86400000 };
     fs.mkdirSync(this.opts.dir, { recursive: true });
@@ -72,12 +72,17 @@ class GuestServer {
   }
 
   async info() {
-    const urls = lanAddresses().map((ip) => `https://${ip}:${this.config.port}/guest?c=${this.config.code}`);
+    const link = (ip) => `https://${ip}:${this.config.port}/guest?c=${this.config.code}`;
+    const urls = lanAddresses().map(link);
+    // Guests outside the local network who joined this computer's tailnet.
+    const tailscaleUrls = tailscaleAddresses().map(link);
     return {
       running: this.running,
       port: this.config.port,
       urls,
       qr: urls[0] ? await QRCode.toDataURL(urls[0], { margin: 1, width: 220 }) : null,
+      tailscaleUrls,
+      tailscaleQr: tailscaleUrls[0] ? await QRCode.toDataURL(tailscaleUrls[0], { margin: 1, width: 220 }) : null,
       guests: [...this.guests.entries()].map(([id, g]) => ({ id, name: g.name })),
       error: this.lastError,
     };

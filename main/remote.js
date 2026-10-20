@@ -31,9 +31,27 @@ const COMMANDS = new Set([
   'snapshot', 'volume', 'mute', 'masterVolume', 'transition', 'titleNext', 'titlePrev', 'guestAudio',
 ]);
 
+/** Tailscale gives each device an address in 100.64.0.0/10 (CGNAT range). */
+const isTailscaleIp = (ip) => /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip);
+
+/**
+ * This computer's Tailscale addresses: devices in the same tailnet reach it
+ * through them from anywhere, as if they were on the local network.
+ */
+function tailscaleAddresses() {
+  const list = [];
+  for (const [name, addrs] of Object.entries(os.networkInterfaces())) {
+    for (const a of addrs ?? []) {
+      if (a.family === 'IPv4' && !a.internal && (isTailscaleIp(a.address) || /tailscale/i.test(name))) list.push(a.address);
+    }
+  }
+  return list;
+}
+
 /**
  * IPv4 addresses a phone on the same network could reach, real adapters first
- * (virtual ones from VirtualBox, Hyper-V, WSL or VPNs go last).
+ * (virtual ones from VirtualBox, Hyper-V, WSL or VPNs go last). Tailscale
+ * addresses are listed separately (tailscaleAddresses).
  */
 function lanAddresses() {
   const virtualName = /virtual|vbox|vmware|vethernet|hyper-v|wsl|docker|loopback|tap|tun|vpn|zerotier|tailscale/i;
@@ -42,7 +60,7 @@ function lanAddresses() {
   const list = [];
   for (const [name, addrs] of Object.entries(os.networkInterfaces())) {
     for (const a of addrs ?? []) {
-      if (a.family !== 'IPv4' || a.internal || a.address.startsWith('169.254.')) continue;
+      if (a.family !== 'IPv4' || a.internal || a.address.startsWith('169.254.') || isTailscaleIp(a.address)) continue;
       const isVirtual = virtualName.test(name) || virtualMac.test(a.mac || '');
       list.push({ ip: a.address, rank: isVirtual ? 2 : /^(192\.168|10\.|172\.(1[6-9]|2\d|3[01]))\./.test(a.address) ? 0 : 1 });
     }
@@ -239,4 +257,4 @@ class RemoteServer {
   }
 }
 
-module.exports = { RemoteServer, lanAddresses };
+module.exports = { RemoteServer, lanAddresses, tailscaleAddresses, isTailscaleIp };
