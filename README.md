@@ -9,11 +9,19 @@ código ni recursos de ningún producto comercial (ver «Relación con OBS Studi
 
 ## Instalar
 
-- **Instalador:** `npm run dist` genera `out/StudioMix-Setup-<versión>.exe`.
-  No está firmado, así que Windows SmartScreen mostrará un aviso la primera vez
-  («Más información» → «Ejecutar de todas formas») hasta que se firme con un
-  certificado de firma de código.
-- **Desde el código:** `npm install` y `npm start`.
+Descarga la última versión en
+**[Releases](https://github.com/simonrovi-web/studiomix/releases/latest)**:
+
+- **`StudioMix-Setup-<versión>.exe`:** instalador para Windows 10/11 (64 bits).
+  Se actualiza solo con cada versión nueva.
+- **`StudioMix-Portable-<versión>.exe`:** sin instalar, por ejemplo desde un USB
+  (no se actualiza solo).
+
+Aún no está firmado, así que Windows SmartScreen mostrará un aviso la primera
+vez («Más información» → «Ejecutar de todas formas»).
+
+Desde el código: `npm install` y `npm start`; `npm run dist` genera los
+ejecutables en `out/`.
 
 FFmpeg viene incluido (`ffmpeg-static`).
 
@@ -119,11 +127,14 @@ de 3 s que se puede cancelar.
 
 ## Actualizaciones automáticas
 
-La app instalada busca actualizaciones si se configura un servidor: sube a una
-carpeta web el contenido de `out/` de una versión nueva (`latest.yml`, el
-instalador y su `.blockmap`) e indica esa dirección en
+La app instalada busca versiones nuevas en las
+[Releases de GitHub](https://github.com/simonrovi-web/studiomix/releases) al
+arrancar y cada 6 horas. Para publicar una: sube la versión en `package.json`,
+genera los ejecutables y sube a una release nueva `latest.yml`, el instalador y
+su `.blockmap` de `out/` (o `npm run release` con `GH_TOKEN` definido). También
+puede usarse un servidor propio: indica la carpeta en
 `%APPDATA%\StudioMix\update.json` como `{ "url": "https://servidor/carpeta/" }`
-(o en la variable `STUDIOMIX_UPDATE_URL`). La actualización se descarga en
+(o en `STUDIOMIX_UPDATE_URL`). La actualización se descarga en
 segundo plano y se instala al cerrar; nunca reinicia la app en mitad de un directo.
 
 ## Atajos

@@ -79,7 +79,14 @@
       "shortcutName": "StudioMix",
       "artifactName": "StudioMix-Setup-${version}.${ext}"
     },
-    "publish": null,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "simonrovi-web",
+        "repo": "studiomix",
+        "releaseType": "release"
+      }
+    ],
     "electronFuses": {
       "runAsNode": false,
       "enableNodeOptionsEnvironmentVariable": false,
@@ -89,5 +96,10 @@
       "enableCookieEncryption": true,
       "grantFileProtocolExtraPrivileges": false
     }
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/simonrovi-web/studiomix.git"
+  },
+  "homepage": "https://github.com/simonrovi-web/studiomix"
 }
