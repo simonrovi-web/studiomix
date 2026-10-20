@@ -1,7 +1,7 @@
 // Vertical (9:16) output: second canvas composed alongside Program, with its
 // own destinations, stream and recording.
 import { app, byId, saveSettings, state } from './store.js';
-import { fillSelect, toast } from './ui-common.js';
+import { confirmAction, fillSelect, toast } from './ui-common.js';
 import { $, fmtTime, h } from './util.js';
 
 const runtime = { inputId: null, overlayId: null };
@@ -112,7 +112,7 @@ export function initVertical() {
   $('#btn-vstream').addEventListener('click', async () => {
     try {
       if (app.outputs.get('vstream')) {
-        if (confirm('¿Detener la emisión vertical?')) await app.outputs.stop('vstream');
+        if (await confirmAction('¿Detener la emisión vertical?', { ok: 'Detener emisión', cancel: 'Seguir en directo', danger: true })) await app.outputs.stop('vstream');
       } else {
         app.audio.resume();
         await app.outputs.start('vstream');

@@ -1,6 +1,6 @@
 import { MIDI_ACTIONS, describeBinding } from './midi.js';
 import { app } from './store.js';
-import { ask } from './ui-common.js';
+import { ask, confirmAction } from './ui-common.js';
 import { $, h } from './util.js';
 
 let open = false;
@@ -59,8 +59,8 @@ export function renderMidiDialog() {
 export async function openMidiDialog() {
   const dlg = $('#dlg-midi');
   open = true;
-  $('#btn-midi-clear').onclick = () => {
-    if (confirm('¿Borrar todas las asignaciones MIDI?')) app.midi.clearAll();
+  $('#btn-midi-clear').onclick = async () => {
+    if (await confirmAction('¿Borrar todas las asignaciones MIDI?', { ok: 'Borrar todas', danger: true })) app.midi.clearAll();
   };
   renderMidiDialog();
   await ask(dlg);

@@ -41,6 +41,21 @@ export function ask(dialog) {
   });
 }
 
+/**
+ * In-app confirmation (replaces window.confirm, which freezes the whole window
+ * and looks foreign). The confirm button names the action, e.g. "Detener emisión".
+ */
+export async function confirmAction(message, { ok = 'Aceptar', cancel = 'Cancelar', danger = false } = {}) {
+  const dlg = $('#dlg-confirm');
+  $('#confirm-message').textContent = message;
+  const okBtn = $('#confirm-ok');
+  okBtn.textContent = ok;
+  okBtn.className = danger ? 'danger' : 'accent';
+  $('#confirm-cancel').textContent = cancel;
+  const answer = await ask(dlg);
+  return answer === 'ok';
+}
+
 const isPanel = (dialog) => dialog.parentElement?.id === 'side';
 
 /** Shows a side-column panel, closing whichever panel was open before. */

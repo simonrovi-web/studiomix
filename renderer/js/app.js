@@ -4,7 +4,7 @@ import { MidiController } from './midi.js';
 import { OutputManager } from './outputs.js';
 import { loadProject, serializeProject } from './project.js';
 import { DEFAULT_SETTINGS, app, byId, changed, onChange, overlayIndexOf, saveSettings, state } from './store.js';
-import { ask, closePanels, fillSelect, initPanels, isTyping, panelOpen, showMenu, toast } from './ui-common.js';
+import { ask, closePanels, confirmAction, fillSelect, initPanels, isTyping, panelOpen, showMenu, toast } from './ui-common.js';
 import { adders, buildCard, removeCard, updateCardTimes, updateCards } from './ui-inputs.js';
 import { openMidiDialog, renderMidiDialog } from './ui-midi.js';
 import { buildMasterStrip, dropStrip, editAudioFx, setLimiter, startMeters, updateStrips } from './ui-mixer.js';
@@ -203,7 +203,7 @@ const actions = {
     audio.resume();
     try {
       if (outputs.get(kind)) {
-        if (kind === 'stream' && !confirm('¿Detener la emisión en directo?')) return;
+        if (kind === 'stream' && !(await confirmAction('¿Detener la emisión en directo?', { ok: 'Detener emisión', cancel: 'Seguir en directo', danger: true }))) return;
         if (kind === 'record') await actions.stopIso();
         await outputs.stop(kind);
       } else {
@@ -211,6 +211,10 @@ const actions = {
         if (kind === 'stream' && !destinationReady()) return openGoLive();
         await outputs.start(kind);
         if (kind === 'record' && state.settings.isoRecording) await actions.startIso();
+        if (kind === 'record' && !state.settings.hasRecorded) {
+          state.settings.hasRecorded = true;
+          saveSettings();
+        }
       }
     } catch (err) {
       toast(err.message, 'error');
@@ -687,7 +691,7 @@ async function saveProject(saveAs = false) {
 }
 
 async function openProject() {
-  if (state.inputs.length && !confirm('Abrir un proyecto sustituye las entradas actuales. ¿Continuar?')) return;
+  if (state.inputs.length && !(await confirmAction('Abrir un proyecto sustituye las entradas actuales.', { ok: 'Abrir proyecto' }))) return;
   let result;
   try {
     result = await window.studio.openProject();

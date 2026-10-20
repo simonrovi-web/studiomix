@@ -90,12 +90,14 @@
         <button id="btn-auto" class="big accent" title="Intro">AUTO</button>
       </div>
       <div class="progress"><div id="trans-progress"></div></div>
-      <label class="field">Transición
-        <span class="row nowrap"><select id="trans-type"></select><button type="button" id="btn-trans-options" title="Opciones de la transición">⚙</button></span>
-      </label>
-      <label class="field">Duración (ms)
-        <input id="trans-duration" type="number" min="100" max="5000" step="100">
-      </label>
+      <div class="trans-fields">
+        <label class="field"><span class="lbl">Transición</span>
+          <span class="row nowrap"><select id="trans-type" title="Tipo de transición"></select><button type="button" id="btn-trans-options" title="Opciones de la transición">⚙</button></span>
+        </label>
+        <label class="field duration-field"><span class="lbl">Duración (ms)</span>
+          <span class="row nowrap"><input id="trans-duration" type="number" min="100" max="5000" step="100" title="Duración de la transición en milisegundos"><span class="unit">ms</span></span>
+        </label>
+      </div>
       <div class="tbar-wrap"><input id="tbar" type="range" min="0" max="100" value="0" title="T-bar"></div>
       <div class="overlay-buttons" id="overlay-buttons"></div>
       <button id="btn-ftb" class="ftb" title="Fundido a negro de toda la salida, imagen y sonido (B)">■ Negro</button>
@@ -135,7 +137,7 @@
       <div id="master-strip" class="strips master"></div>
     </section>
     <section class="stats panel">
-      <h3>Rendimiento</h3>
+      <h3><button type="button" id="btn-stats-toggle" class="panel-toggle" aria-expanded="true" title="Plegar o desplegar las gráficas">Rendimiento <span class="chev">▾</span></button></h3>
       <div id="charts" class="charts"></div>
     </section>
   </footer>
@@ -405,6 +407,14 @@
   <div id="toasts" aria-live="polite"></div>
 
 
+
+  <!-- Confirmación -->
+  <dialog id="dlg-confirm" class="confirm">
+    <form method="dialog">
+      <p id="confirm-message"></p>
+      <menu><button value="cancel" id="confirm-cancel" formnovalidate>Cancelar</button><button value="ok" id="confirm-ok" class="accent" autofocus>Aceptar</button></menu>
+    </form>
+  </dialog>
 
   <!-- Invitados remotos -->
   <dialog id="dlg-guests" class="wide">

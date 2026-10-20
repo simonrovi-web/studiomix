@@ -14,9 +14,16 @@ function steps() {
   return [
     { done: state.inputs.length > 0, label: 'Añade una fuente' },
     { done: state.programId != null, label: 'Mándala al aire' },
-    { done: destinationReady(), label: 'Conecta tu canal' },
+    // Recording counts too: not everyone streams.
+    { done: destinationReady() || !!state.settings.hasRecorded, label: 'Emite o graba' },
   ];
 }
+
+const dismiss = () => {
+  state.settings.guideDismissed = true;
+  saveSettings();
+  renderGuide();
+};
 
 async function add(kind) {
   try {
@@ -43,6 +50,27 @@ export function renderGuide() {
 
   const empty = current === 0;
   box.classList.toggle('compact', !empty);
+
+  // Once there is something in Preview, the guide becomes one line in the
+  // monitor's header so it never covers the picture.
+  if (!empty) {
+    $('.preview .monitor-label').append(box);
+    const hint = current === 1
+      ? (state.previewId != null ? 'Pulsa AUTO (o Intro) para mandar Preview al aire' : 'Haz clic en una fuente de abajo')
+      : null;
+    box.replaceChildren(
+      h('span', { class: 'guide-step' }, `Paso ${current + 1}/3`),
+      hint
+        ? h('span', { class: 'guide-inline-hint' }, hint)
+        : h('span', { class: 'guide-inline-actions' },
+            h('button', { type: 'button', class: 'accent small', onclick: () => openGoLive() }, 'Conectar mi canal'),
+            h('span', { class: 'muted' }, 'o'),
+            h('button', { type: 'button', class: 'small', onclick: () => app.actions.toggleOutput('record') }, 'Grabar')),
+      h('button', { type: 'button', class: 'ghost small', title: 'Ocultar la guía', onclick: dismiss }, '✕'),
+    );
+    return;
+  }
+  $('.preview .screen').append(box);
   const stepList = h(
     'ol',
     { class: 'guide-steps' },
@@ -61,23 +89,12 @@ export function renderGuide() {
     );
   } else if (current === 1) {
     cta = h('p', { class: 'guide-hint' }, state.previewId != null ? 'Lo que ves aquí es Preview (el siguiente plano). Pulsa AUTO o Intro para mandarlo al aire.' : 'Haz clic en una fuente de abajo para verla aquí, en Preview.');
-  } else {
-    cta = h('button', { type: 'button', class: 'accent', onclick: () => openGoLive() }, 'Conectar mi canal…');
   }
 
   box.replaceChildren(
     h('div', { class: 'guide-head' },
-      h('strong', {}, empty ? 'Empieza en 3 pasos' : `Paso ${current + 1} de 3`),
-      h('button', {
-        type: 'button',
-        class: 'ghost small',
-        title: 'Ocultar la guía',
-        onclick: () => {
-          state.settings.guideDismissed = true;
-          saveSettings();
-          renderGuide();
-        },
-      }, empty ? 'Ocultar guía' : '✕'),
+      h('strong', {}, 'Empieza en 3 pasos'),
+      h('button', { type: 'button', class: 'ghost small', title: 'Ocultar la guía', onclick: dismiss }, 'Ocultar guía'),
     ),
     stepList,
     cta,

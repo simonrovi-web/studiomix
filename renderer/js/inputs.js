@@ -2,7 +2,7 @@ import { DEFAULT_FX, EffectProcessor, needsGpu, parseCube, presetLut } from './e
 import { BackgroundRemover } from './segmenter.js';
 
 const EMPTY_MASK = Object.assign(document.createElement('canvas'), { width: 1, height: 1 });
-import { DEFAULT_TITLE, TITLE_TEMPLATES } from './titles.js';
+import { DEFAULT_TITLE, TEMPLATE_PRESETS, TITLE_TEMPLATES } from './titles.js';
 import { drawChecker, drawFitted, drawPlaceholder, framedRect } from './util.js';
 
 let seq = 0;
@@ -538,7 +538,8 @@ export function parseTitleList(text) {
 export class TitleInput extends Input {
   constructor(fields = {}, name) {
     super('title', name || 'Título');
-    this.fields = { ...DEFAULT_TITLE, ...fields };
+    // Each template starts from its own sample text (a ticker isn't "Nombre Apellido").
+    this.fields = { ...DEFAULT_TITLE, ...(TEMPLATE_PRESETS[fields.template] ?? {}), ...fields };
     this.timer = { running: false, base: 0, startedAt: 0 };
   }
 

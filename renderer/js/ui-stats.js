@@ -68,7 +68,36 @@ function draw(chart) {
   view.value.textContent = chart.fmt(last, data2?.[data2.length - 1] ?? 0);
 }
 
+const COLLAPSE_KEY = 'studiomix.statsCollapsed';
+
+function initCollapse() {
+  const panel = $('.stats');
+  const btn = $('#btn-stats-toggle');
+  let collapsed;
+  try {
+    collapsed = localStorage.getItem(COLLAPSE_KEY);
+  } catch {
+    collapsed = null;
+  }
+  // Without a saved choice, start folded on short screens where height is precious.
+  const apply = (value) => {
+    panel.classList.toggle('collapsed', value);
+    btn.setAttribute('aria-expanded', String(!value));
+  };
+  apply(collapsed == null ? window.innerHeight < 880 : collapsed === '1');
+  btn.addEventListener('click', () => {
+    const value = !panel.classList.contains('collapsed');
+    apply(value);
+    try {
+      localStorage.setItem(COLLAPSE_KEY, value ? '1' : '0');
+    } catch {
+      // Preference won't persist.
+    }
+  });
+}
+
 export function initStats() {
+  initCollapse();
   const box = $('#charts');
   for (const chart of CHARTS) {
     const canvas = h('canvas');
@@ -100,7 +129,7 @@ export function initStats() {
     push(series.audio, Math.max(-60, levelToDb(audioPeak)));
     push(series.memory, metrics.memoryMb);
     audioPeak = 0;
-    if (!document.hidden) CHARTS.forEach(draw);
+    if (!document.hidden && !$('.stats').classList.contains('collapsed')) CHARTS.forEach(draw);
     updateChips(stats, metrics, stream);
   }, 1000);
 }
