@@ -22,6 +22,10 @@ const STATIC = {
   '/remote/style.css': ['style.css', 'text/css; charset=utf-8'],
 };
 
+// WebRTC signalling for the phone monitor, relayed between a phone and the renderer.
+const MONITOR_MESSAGES = new Set(['start', 'source', 'answer', 'candidate', 'stop']);
+const MAX_SIGNAL_BYTES = 64 * 1024;
+
 const COMMANDS = new Set([
   'cut', 'auto', 'ftb', 'preview', 'program', 'overlay', 'stream', 'record', 'pause', 'replay', 'replaySave',
   'snapshot', 'volume', 'mute', 'masterVolume', 'transition', 'titleNext', 'titlePrev', 'guestAudio',
@@ -61,6 +65,8 @@ class RemoteServer {
     this.state = null;
     this.thumbs = {};
     this.extraUpgrade = null;
+    this.clients = new Map(); // clientId -> ws
+    this.clientSeq = 0;
   }
 
   loadConfig() {
@@ -84,6 +90,8 @@ class RemoteServer {
   async info() {
     const urls = lanAddresses().map((ip) => `http://${ip}:${this.config.port}/remote?t=${this.config.token}`);
     const qr = urls[0] ? await QRCode.toDataURL(urls[0], { margin: 1, width: 220 }) : null;
+    const monitorUrls = urls.map((u) => `${u}&view=monitor`);
+    const monitorQr = monitorUrls[0] ? await QRCode.toDataURL(monitorUrls[0], { margin: 1, width: 220 }) : null;
     return {
       enabled: this.config.enabled,
       running: this.running,
@@ -92,6 +100,8 @@ class RemoteServer {
       urls,
       apiBase: urls[0] ? `http://${urls[0].split('/')[2]}/api` : `http://localhost:${this.config.port}/api`,
       qr,
+      monitorUrls,
+      monitorQr,
       clients: this.wss?.clients.size ?? 0,
       error: this.lastError ?? null,
     };
@@ -140,6 +150,7 @@ class RemoteServer {
 
   async stop() {
     for (const ws of this.wss?.clients ?? []) ws.terminate();
+    this.clients.clear();
     this.wss?.close();
     this.wss = null;
     if (this.server) await new Promise((resolve) => this.server.close(() => resolve()));
@@ -147,18 +158,36 @@ class RemoteServer {
   }
 
   connect(ws) {
+    const clientId = `c${++this.clientSeq}`;
+    this.clients.set(clientId, ws);
     this.opts.send('api:clients', this.wss.clients.size);
     if (this.state) ws.send(JSON.stringify({ type: 'state', state: this.state }));
     if (Object.keys(this.thumbs).length) ws.send(JSON.stringify({ type: 'thumbs', thumbs: this.thumbs }));
     ws.on('message', (data) => {
       try {
+        if (data.length > MAX_SIGNAL_BYTES) return;
         const msg = JSON.parse(String(data));
+        if (msg.type === 'monitor' && MONITOR_MESSAGES.has(msg.data?.type)) {
+          this.opts.send('monitor:signal', { clientId, data: msg.data });
+          return;
+        }
         if (COMMANDS.has(msg.cmd)) this.opts.send('api:command', { cmd: msg.cmd, args: msg.args ?? {} });
       } catch {
         // Ignore malformed messages.
       }
     });
-    ws.on('close', () => this.opts.send('api:clients', this.wss?.clients.size ?? 0));
+    ws.on('close', () => {
+      this.clients.delete(clientId);
+      this.opts.send('monitor:signal', { clientId, data: { type: 'stop' } });
+      this.opts.send('api:clients', this.wss?.clients.size ?? 0);
+    });
+  }
+
+  /** Sends the renderer's half of the monitor signalling to one phone ('*': all). */
+  monitorSignal(clientId, data) {
+    if (clientId === '*') return this.broadcast({ type: 'monitor', data });
+    const ws = this.clients.get(clientId);
+    if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'monitor', data }));
   }
 
   broadcast(message) {

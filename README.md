@@ -84,6 +84,17 @@ de 3 s que se puede cancelar.
   un aviso de seguridad la primera vez. Para invitados por Internet haría falta un
   servidor de retransmisión (TURN) y abrir puertos, que no se incluyen.
 
+**Salidas a pantallas y monitores** (botón 🖥 de la barra superior)
+- **Program, Preview o Multiview a pantalla completa** en cualquier monitor,
+  televisor o proyector conectado, sin controles. Esc o doble clic la apaga. Si
+  se desconecta un proyector, su salida vuelve sola al reconectarlo.
+- **Ventanas flotantes** de cualquiera de las tres, para un solo monitor o para
+  compartirlas en una videollamada.
+- **Monitor en el móvil**: escanea el QR y el teléfono muestra Program, Preview
+  o el multiview por WebRTC (720p, poco retardo, misma red wifi), con tally,
+  sonido opcional y pantalla completa. Hasta 4 móviles a la vez. También desde
+  el mando remoto con «Ver el monitor».
+
 **Control**
 - Teclado, MIDI (aprender, faders, T-bar, LEDs de tally).
 - **Mando remoto en el móvil** (☰ → Mando remoto): página web con QR para cortar,
@@ -133,6 +144,7 @@ segundo plano y se instala al cerrar; nunca reinicia la app en mitad de un direc
   - `netinputs.js`: entradas SRT/RTSP/RTMP/UDP/HLS.
   - `session.js`: proyectos, autoguardado y recuperación tras un cierre inesperado.
   - `system.js`, `updates.js`: métricas, test de subida y actualizaciones.
+  - `screens.js`: ventanas de salida en otras pantallas.
   - `log.js`: registro en `%APPDATA%\StudioMix\logs\main.log` (incluye errores de la interfaz).
   - `remote.js`: servidor HTTP/WebSocket de la API y del mando (`remote/`).
   - `guests.js`: servidor HTTPS de invitados y señalización WebRTC (`guest/`).

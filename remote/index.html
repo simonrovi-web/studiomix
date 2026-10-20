@@ -16,6 +16,25 @@
     <span id="rec" class="pill">REC</span>
   </header>
 
+  <section id="monitor" class="monitor" hidden>
+    <div class="screen">
+      <video id="mon-video" autoplay muted playsinline></video>
+      <span id="mon-tally" class="mon-tally"></span>
+      <span id="mon-status" class="mon-status">Conectando vídeo…</span>
+    </div>
+    <div class="row mon-tabs">
+      <button data-src="program" class="on">Program</button>
+      <button data-src="preview">Preview</button>
+      <button data-src="multiview">Multiview</button>
+    </div>
+    <div class="row">
+      <button id="mon-sound">🔇 Activar sonido</button>
+      <button id="mon-full">⛶ Pantalla completa</button>
+      <button id="mon-close">✕ Ocultar</button>
+    </div>
+  </section>
+  <button id="mon-open" class="mon-open">📺 Ver el monitor (Program / Preview)</button>
+
   <section class="names">
     <div><span class="tag pvw">PVW</span> <span id="pvw-name">—</span></div>
     <div><span class="tag pgm">PGM</span> <span id="pgm-name">—</span></div>

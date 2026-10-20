@@ -634,3 +634,11 @@ kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 
   .chart canvas { height: 20px; }
   .chart-head { font-size: 10px; }
 }
+
+/* Salidas y monitores */
+.screen-row { gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.screen-row select { flex: 0 0 200px; width: 200px; }
+.screen-row .stack { flex: 1; min-width: 0; }
+.screen-icon { font-size: 20px; }
+.stack.tight { gap: 2px; }
+.chip.clickable { cursor: pointer; }

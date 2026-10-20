@@ -56,6 +56,10 @@ export class Compositor {
     this.lastFrame = performance.now();
     this.lastTick = 0;
     this.videoTrack = null;
+    // Screens and phone monitors watching Preview/Multiview: Preview is drawn at
+    // full size and the multiview kept up to date only while someone watches.
+    this.watchers = { program: 0, preview: 0, multiview: 0 };
+    this.monitorTracks = {};
     this.onCommit = null;
     this.onMasterFade = null;
     this.onFrame = null;
@@ -76,8 +80,7 @@ export class Compositor {
     this.fps = fps;
     this.program.width = width;
     this.program.height = height;
-    this.preview.width = Math.round(width / 2);
-    this.preview.height = Math.round(height / 2);
+    this.sizePreview();
     this.videoTrack?.stop();
     this.videoTrack = this.program.captureStream(fps).getVideoTracks()[0];
     // Vertical (9:16) output, composed alongside Program when enabled.
@@ -88,6 +91,40 @@ export class Compositor {
     this.verticalTrack?.stop();
     this.verticalTrack = this.vertical.captureStream(fps).getVideoTracks()[0];
     this.ticker.postMessage(fps);
+  }
+
+  sizePreview() {
+    const scale = this.watchers.preview > 0 ? 1 : 0.5;
+    const w = Math.round(this.program.width * scale);
+    const h = Math.round(this.program.height * scale);
+    if (this.preview.width !== w || this.preview.height !== h) {
+      this.preview.width = w;
+      this.preview.height = h;
+    }
+  }
+
+  /** Registers (+1) or releases (-1) a viewer of 'program', 'preview' or 'multiview'. */
+  watch(source, delta) {
+    if (!(source in this.watchers)) return;
+    this.watchers[source] = Math.max(0, this.watchers[source] + delta);
+    if (source === 'preview') this.sizePreview();
+  }
+
+  /**
+   * Video of a source for screens and monitors. Unlike `videoTrack` (fixed fps,
+   * replaced when the format changes), these follow every frame and survive
+   * resolution changes, so long-lived viewers never lose their picture.
+   */
+  monitorTrack(source) {
+    const canvas = { program: this.program, preview: this.preview, multiview: this.multiview }[source];
+    if (!canvas) throw new Error(`Fuente desconocida: ${source}`);
+    let track = this.monitorTracks[source];
+    if (!track || track.readyState === 'ended') {
+      track = canvas.captureStream().getVideoTracks()[0];
+      track.contentHint = 'motion';
+      this.monitorTracks[source] = track;
+    }
+    return track;
   }
 
   /**
@@ -389,7 +426,7 @@ export class Compositor {
     for (const input of s.inputs) input.channel?.setPresence(weights.get(input.id) ?? 0);
     this.onMasterFade?.(1 - s.ftb.alpha);
 
-    if (s.view === 'multiview' && this.frame % MULTIVIEW_EVERY === 0) this.renderMultiview(now);
+    if ((s.view === 'multiview' || this.watchers.multiview > 0) && this.frame % MULTIVIEW_EVERY === 0) this.renderMultiview(now);
     if (this.verticalConfig?.()) this.renderVertical(now, this.verticalConfig());
 
     if (this.frame % THUMB_EVERY === 0) {

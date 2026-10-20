@@ -21,6 +21,7 @@
       <span class="chip" id="chip-cpu" title="CPU del sistema">CPU —</span>
       <span class="chip" id="chip-midi" title="Controladores MIDI conectados">MIDI —</span>
       <span class="chip" id="chip-remote" title="Mando remoto y API" hidden>Remoto</span>
+      <span class="chip good clickable" id="chip-screens" title="Pantallas, ventanas y móviles mostrando una salida" hidden>Salidas</span>
     </div>
     <div class="spacer"></div>
     <div class="outputs-bar" aria-label="Salidas">
@@ -36,6 +37,7 @@
         <button id="btn-stream" class="out-btn stream" title="Emitir en directo"><span class="out-dot"></span><span class="out-label">Emitir</span><span id="stream-info" class="out-meta mono"></span></button>
       </div>
     </div>
+    <button id="btn-screens" class="ghost icon-btn" title="Salidas a pantallas, proyectores y monitor en el móvil">🖥</button>
     <button id="btn-chat" class="ghost icon-btn" title="Chat de la audiencia">💬</button>
     <button id="btn-menu" class="ghost icon-btn" title="Proyecto, capturas, MIDI, mando remoto…" aria-haspopup="menu">☰</button>
     <button id="btn-settings" class="ghost icon-btn" title="Ajustes">⚙</button>
@@ -422,6 +424,15 @@
       <h2>Invitados remotos</h2>
       <label class="field check"><input id="guests-enabled" type="checkbox"> Permitir que entren invitados (red local)</label>
       <div id="guests-body" class="stack"></div>
+      <menu><button value="ok" class="accent">Cerrar</button></menu>
+    </form>
+  </dialog>
+
+  <!-- Salidas a pantallas y monitor en el móvil -->
+  <dialog id="dlg-screens" class="wide">
+    <form method="dialog">
+      <h2>Salidas y monitores</h2>
+      <div id="screens-body" class="stack"></div>
       <menu><button value="ok" class="accent">Cerrar</button></menu>
     </form>
   </dialog>

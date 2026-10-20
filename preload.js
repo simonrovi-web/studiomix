@@ -43,6 +43,10 @@ contextBridge.exposeInMainWorld('studio', {
     ipcRenderer.on('guest:leave', (_event, p) => handlers.leave(p));
     ipcRenderer.on('guest:signal', (_event, p) => handlers.signal(p));
   },
+  listDisplays: () => ipcRenderer.invoke('screens:list'),
+  onDisplaysChanged: (callback) => ipcRenderer.on('screens:changed', (_event, list) => callback(list)),
+  monitorSignal: (clientId, data) => ipcRenderer.send('monitor:signal', clientId, data),
+  onMonitorSignal: (callback) => ipcRenderer.on('monitor:signal', (_event, msg) => callback(msg)),
   remoteInfo: () => ipcRenderer.invoke('remote:info'),
   remoteConfigure: (opts) => ipcRenderer.invoke('remote:configure', opts),
   publishState: (state) => ipcRenderer.send('api:state', state),

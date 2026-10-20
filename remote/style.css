@@ -52,3 +52,24 @@ button.danger.live { animation: pulse 2s infinite; }
 .fader span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fader input { width: 100%; accent-color: var(--text); height: 32px; }
 .fader button { min-height: 36px; padding: 0; font-size: 12px; }
+
+/* Monitor */
+.mon-open { width: 100%; margin-bottom: 10px; }
+.monitor { margin-bottom: 12px; }
+.monitor .screen { position: relative; background: #000; border-radius: 10px; overflow: hidden; border: 3px solid var(--line); }
+.monitor.onair .screen { border-color: var(--program); }
+.monitor.pvw .screen { border-color: var(--preview); }
+.monitor video { width: 100%; aspect-ratio: 16 / 9; display: block; background: #000; object-fit: contain; }
+.monitor:fullscreen { display: grid; place-items: center; background: #000; margin: 0; }
+.monitor:fullscreen .screen { width: 100%; border: 0; border-radius: 0; }
+.monitor:fullscreen .row { display: none; }
+.monitor:fullscreen video { aspect-ratio: auto; height: 100vh; }
+.mon-tally { position: absolute; top: 8px; left: 8px; font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 4px; background: rgba(0, 0, 0, 0.6); }
+.monitor.onair .mon-tally { background: var(--program); color: #fff; }
+.monitor.pvw .mon-tally { background: var(--preview); color: #06210f; }
+.mon-status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; text-align: center; padding: 12px; pointer-events: none; }
+.mon-status:empty { display: none; }
+.mon-tabs { margin-top: 8px; }
+.mon-tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+/* Monitor-only page (?view=monitor): just the picture and its buttons. */
+body.monitor-only > section:not(#monitor), body.monitor-only .hint, body.monitor-only .mon-open { display: none; }

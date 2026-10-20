@@ -28,6 +28,8 @@ export const DEFAULT_SETTINGS = {
   vertical: { mode: 'reframe', panX: 0 },
   verticalDestinations: [{ id: 101, enabled: true, name: 'TikTok', url: 'rtmp://', key: '' }],
   verticalKbps: 4500,
+  // Display id -> 'program' | 'preview' | 'multiview' (see screens.js).
+  screenOutputs: {},
 };
 
 function loadSettings() {

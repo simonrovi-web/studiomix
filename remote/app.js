@@ -1,6 +1,8 @@
 // StudioMix phone/tablet remote. Talks to the app over the local WebSocket.
 (() => {
-  const token = new URLSearchParams(location.search).get('t') || '';
+  const params = new URLSearchParams(location.search);
+  const token = params.get('t') || '';
+  const monitorOnly = params.get('view') === 'monitor';
   const $ = (s) => document.querySelector(s);
   let ws = null;
   let state = null;
@@ -18,18 +20,23 @@
     ws.onopen = () => {
       retry = 0;
       setConn('Conectado', 'ok');
+      if (monitor.on) requestMonitor();
     };
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if (msg.type === 'state') {
         state = msg.state;
         render();
+      } else if (msg.type === 'monitor') {
+        onMonitor(msg.data);
       } else if (msg.type === 'thumbs') {
         thumbs = msg.thumbs;
         renderThumbs();
       }
     };
     ws.onclose = () => {
+      closePeer();
+      if (monitor.on) setMonitorStatus('Reconectando…');
       setConn(token ? 'Sin conexión' : 'Falta el token', 'bad');
       retry = Math.min(retry + 1, 5);
       setTimeout(connect, retry * 1000);
@@ -72,8 +79,131 @@
     return btn;
   }
 
+  // --- monitor (WebRTC video from the app) ---------------------------------
+
+  const monitor = { on: false, source: 'program', pc: null };
+  const monEl = $('#monitor');
+  const monVideo = $('#mon-video');
+
+  function setMonitorStatus(text) {
+    $('#mon-status').textContent = text;
+  }
+
+  function sendMonitor(data) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'monitor', data }));
+  }
+
+  function closePeer() {
+    monitor.pc?.close();
+    monitor.pc = null;
+  }
+
+  function requestMonitor() {
+    setMonitorStatus('Conectando vídeo…');
+    sendMonitor({ type: 'start', source: monitor.source });
+  }
+
+  async function onMonitor(data) {
+    try {
+      if (data.type === 'offer') {
+        closePeer();
+        const pc = new RTCPeerConnection({ iceServers: [] });
+        monitor.pc = pc;
+        pc.ontrack = (e) => {
+          // As little buffering as possible: this is a confidence monitor.
+          if ('jitterBufferTarget' in e.receiver) e.receiver.jitterBufferTarget = 0;
+          monVideo.srcObject = e.streams[0];
+          monVideo.play().catch(() => {});
+        };
+        pc.onicecandidate = (e) => e.candidate && sendMonitor({ type: 'candidate', candidate: e.candidate.toJSON() });
+        pc.onconnectionstatechange = () => {
+          if (pc.connectionState === 'connected') setMonitorStatus('');
+          if (pc.connectionState === 'failed') {
+            setMonitorStatus('No se pudo recibir el vídeo. Comprueba que el móvil está en la misma red wifi. Reintentando…');
+            // The app may have restarted its interface: ask again for a fresh connection.
+            setTimeout(() => {
+              if (monitor.on && monitor.pc === pc) requestMonitor();
+            }, 3000);
+          }
+        };
+        await pc.setRemoteDescription(data.sdp);
+        await pc.setLocalDescription(await pc.createAnswer());
+        sendMonitor({ type: 'answer', sdp: pc.localDescription.toJSON() });
+      } else if (data.type === 'candidate' && monitor.pc) {
+        await monitor.pc.addIceCandidate(data.candidate);
+      } else if (data.type === 'restart') {
+        if (monitor.on) requestMonitor();
+      } else if (data.type === 'error') {
+        setMonitorStatus(data.message);
+      }
+    } catch (err) {
+      setMonitorStatus(`Error de vídeo: ${err.message}`);
+    }
+  }
+
+  function openMonitor() {
+    monitor.on = true;
+    monEl.hidden = false;
+    $('#mon-open').hidden = true;
+    requestMonitor();
+  }
+
+  function closeMonitor() {
+    monitor.on = false;
+    sendMonitor({ type: 'stop' });
+    closePeer();
+    monVideo.srcObject = null;
+    monEl.hidden = true;
+    $('#mon-open').hidden = false;
+  }
+
+  function renderMonitorTally() {
+    const names = { program: state?.programName, preview: state?.previewName };
+    const label = { program: 'PROGRAM', preview: 'PREVIEW', multiview: 'MULTIVIEW' }[monitor.source];
+    const name = names[monitor.source];
+    const live = monitor.source === 'program' && state?.stream.live ? ' · EN DIRECTO' : '';
+    $('#mon-tally').textContent = `${label}${name ? ` · ${name}` : ''}${live}`;
+    monEl.classList.toggle('onair', monitor.source === 'program');
+    monEl.classList.toggle('pvw', monitor.source === 'preview');
+  }
+
+  document.querySelectorAll('.mon-tabs button').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      monitor.source = btn.dataset.src;
+      document.querySelectorAll('.mon-tabs button').forEach((b) => b.classList.toggle('on', b === btn));
+      if (monitor.pc) sendMonitor({ type: 'source', source: monitor.source });
+      else requestMonitor();
+      renderMonitorTally();
+    }),
+  );
+  $('#mon-open').addEventListener('click', openMonitor);
+  $('#mon-close').addEventListener('click', () => {
+    if (monitorOnly) {
+      // Monitor-only page: switch to the full remote instead of hiding the picture.
+      document.body.classList.remove('monitor-only');
+      $('#mon-close').textContent = '✕ Ocultar';
+      return;
+    }
+    closeMonitor();
+  });
+  $('#mon-sound').addEventListener('click', () => {
+    monVideo.muted = !monVideo.muted;
+    monVideo.play().catch(() => {});
+    $('#mon-sound').textContent = monVideo.muted ? '🔇 Activar sonido' : '🔊 Silenciar';
+  });
+  $('#mon-full').addEventListener('click', () => {
+    if (monEl.requestFullscreen) monEl.requestFullscreen().catch(() => {});
+    else if (monVideo.webkitEnterFullscreen) monVideo.webkitEnterFullscreen(); // iPhone Safari
+  });
+  if (monitorOnly) {
+    document.body.classList.add('monitor-only');
+    $('#mon-close').textContent = '🎛 Mando';
+    openMonitor();
+  }
+
   function render() {
     if (!state) return;
+    renderMonitorTally();
     $('#pvw-name').textContent = state.previewName || '—';
     $('#pgm-name').textContent = state.programName || '—';
     $('#live').classList.toggle('on', !!state.stream.live);

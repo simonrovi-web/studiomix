@@ -23,6 +23,7 @@ import { initStats } from './ui-stats.js';
 import { initControls } from './ui-controls.js';
 import { initOutputs, renderOutputs } from './ui-outputs.js';
 import { initAutosave, openProject, saveProject } from './ui-projects.js';
+import { initScreens, openScreens } from './ui-screens.js';
 import { $ } from './util.js';
 
 // --- services -------------------------------------------------------------------
@@ -80,6 +81,7 @@ initVertical();
 initGuide();
 initOutputs();
 initAutosave();
+initScreens();
 
 $('#btn-record-pause').addEventListener('click', actions.togglePause);
 $('#btn-replay').addEventListener('click', actions.toggleReplay);
@@ -95,6 +97,7 @@ $('#btn-menu').addEventListener('click', (e) => {
     ['Captura de Program', actions.snapshot, { hint: 'S' }],
     ['Abrir carpeta de grabaciones', () => window.studio.openFolder(state.settings.recordFolder || null)],
     null,
+    ['Salidas a pantallas y monitor en el móvil…', openScreens],
     ['Controlador MIDI…', openMidiDialog],
     ['Mando remoto y Stream Deck…', () => actions.openRemote?.()],
     ['Invitados remotos…', () => actions.openGuests?.()],

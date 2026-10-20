@@ -25,6 +25,7 @@ const netinputs = require('./main/netinputs');
 const projects = require('./main/session');
 const system = require('./main/system');
 const updates = require('./main/updates');
+const screens = require('./main/screens');
 const { RemoteServer, lanAddresses } = require('./main/remote');
 const { GuestServer } = require('./main/guests');
 
@@ -43,7 +44,8 @@ app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
 // A window covered by another app must keep decoding video and rendering at full rate.
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,BackgroundVideoTrackOptimization');
+// Phones on the LAN can't always resolve WebRTC's .local names, so share real IPs.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,BackgroundVideoTrackOptimization,WebRtcHideLocalIpsWithMdns');
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -206,6 +208,10 @@ function registerIpc() {
   ipcMain.handle('remote:configure', (_event, opts) => remote.configure(opts || {}));
   ipcMain.on('api:state', (_event, state) => remote?.setState(state));
   ipcMain.on('api:thumbs', (_event, thumbs) => remote?.setThumbs(thumbs));
+  ipcMain.on('monitor:signal', (_event, clientId, data) => remote?.monitorSignal(String(clientId), data));
+
+  // --- output screens ---
+  ipcMain.handle('screens:list', () => screens.listDisplays());
 }
 
 function createWindow() {
@@ -227,10 +233,18 @@ function createWindow() {
     },
   });
   context.window = win;
+  win.webContents.setWindowOpenHandler(screens.handleWindowOpen);
+  win.webContents.on('did-create-window', screens.adopt);
+  // Output windows belong to the main window; they must not keep the app open.
+  win.on('close', screens.closeAll);
   // Network inputs belong to the page that created them: if it reloads or
   // crashes, stop their FFmpeg receivers so the ports are freed.
   win.webContents.on('did-start-navigation', (details) => {
-    if (details.isMainFrame && !details.isSameDocument) netinputs.stopAllNetInputs();
+    if (details.isMainFrame && !details.isSameDocument) {
+      netinputs.stopAllNetInputs();
+      // Their video comes from this page; the new page reopens the remembered ones.
+      screens.closeAll();
+    }
   });
   win.webContents.on('render-process-gone', (_event, details) => {
     log.error('El proceso de la interfaz se cerró:', details.reason, `(código ${details.exitCode})`);
@@ -275,6 +289,7 @@ app.whenReady().then(() => {
   });
   registerIpc();
   createWindow();
+  screens.watchDisplays();
   ffmpeg.probeEncoders().then((found) => log.info('Codificadores:', found.join(', ')));
   if (remote.config.enabled) remote.start();
   updates.setupUpdates();

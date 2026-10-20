@@ -83,3 +83,13 @@ test('log lines carry time, level, scope and error stacks', () => {
   assert.match(line, /^2026-10-19T10:00:00\.000Z WARN \[outputs\] falló Error: boom/);
   assert.match(line, /\{"a":1\}$/);
 });
+
+test('parseOutputUrl accepts only output pages with a known source', () => {
+  const screens = require('../main/screens.js');
+  assert.deepEqual(screens.parseOutputUrl('app://studiomix/output.html?source=preview&display=123'), { source: 'preview', display: '123' });
+  assert.deepEqual(screens.parseOutputUrl('app://studiomix/output.html?source=program'), { source: 'program', display: 'window' });
+  assert.equal(screens.parseOutputUrl('app://studiomix/output.html?source=desktop'), null);
+  assert.equal(screens.parseOutputUrl('app://studiomix/index.html?source=program'), null);
+  assert.equal(screens.parseOutputUrl('https://example.com/output.html?source=program'), null);
+  assert.equal(screens.parseOutputUrl('not a url'), null);
+});
