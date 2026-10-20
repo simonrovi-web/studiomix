@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('studio', {
   chooseFolder: () => ipcRenderer.invoke('dialog:choose-folder'),
   openFolder: (folder) => ipcRenderer.invoke('shell:open-folder', folder),
   info: () => ipcRenderer.invoke('app:info'),
+  log: (level, message) => ipcRenderer.send('log:renderer', level, message),
   listDisplaySources: () => ipcRenderer.invoke('display:list-sources'),
   selectDisplaySource: (id) => ipcRenderer.invoke('display:select-source', id),
   startOutput: (opts) => ipcRenderer.invoke('output:start', opts),

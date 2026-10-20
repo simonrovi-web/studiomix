@@ -154,7 +154,7 @@ export class CropEditor {
     if (mode === 'new') {
       const x0 = Math.max(0, Math.min(w, start[0]));
       const y0 = Math.max(0, Math.min(h, start[1]));
-      let x1 = Math.max(0, Math.min(w, px));
+      const x1 = Math.max(0, Math.min(w, px));
       let y1 = Math.max(0, Math.min(h, py));
       if (ratio) {
         const bw = Math.abs(x1 - x0);

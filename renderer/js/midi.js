@@ -57,7 +57,8 @@ export class MidiController {
   load() {
     try {
       return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    } catch {
+    } catch (err) {
+      console.warn('Asignaciones MIDI dañadas; se empieza sin ellas:', err);
       return {};
     }
   }

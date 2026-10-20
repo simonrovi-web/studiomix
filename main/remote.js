@@ -12,7 +12,9 @@ const crypto = require('node:crypto');
 const { WebSocketServer } = require('ws');
 const QRCode = require('qrcode');
 
-const REMOTE_DIR = path.join(__dirname, 'remote');
+const log = require('./log').scope('remote');
+
+const REMOTE_DIR = path.join(__dirname, '..', 'remote');
 const STATIC = {
   '/remote': ['index.html', 'text/html; charset=utf-8'],
   '/remote/': ['index.html', 'text/html; charset=utf-8'],
@@ -64,7 +66,8 @@ class RemoteServer {
   loadConfig() {
     try {
       return { enabled: false, port: 8088, ...JSON.parse(fs.readFileSync(this.opts.configFile, 'utf8')) };
-    } catch {
+    } catch (err) {
+      if (err.code !== 'ENOENT') log.warn('remote.json no es válido; se crea uno nuevo:', err.message);
       return { enabled: false, port: 8088, token: crypto.randomBytes(8).toString('hex') };
     }
   }

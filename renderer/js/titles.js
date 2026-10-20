@@ -479,3 +479,35 @@ export const TEMPLATE_PRESETS = {
   countdown: { title: 'Empezamos en', minutes: 5 },
   holding: { title: 'Empezamos pronto', subtitle: 'La emisión comenzará en unos minutos', minutes: 5, bgColor: '#0f1830', accent: '#3b7cf6', bgOpacity: 1 },
 };
+
+/**
+ * Parses a title list: one entry per line, fields separated by "|", ";" or ","
+ * (CSV with optional quotes). Empty lines and a "titulo,subtitulo" header are skipped.
+ */
+export function parseTitleList(text) {
+  if (!text) return [];
+  const rows = [];
+  for (const raw of String(text).split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const sep = line.includes('|') ? '|' : line.includes(';') ? ';' : ',';
+    const cells = [];
+    let cur = '';
+    let quoted = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"' && line[i + 1] === '"' && quoted) {
+        cur += '"';
+        i++;
+      } else if (c === '"') quoted = !quoted;
+      else if (c === sep && !quoted) {
+        cells.push(cur.trim());
+        cur = '';
+      } else cur += c;
+    }
+    cells.push(cur.trim());
+    if (rows.length === 0 && /^(t[ií]tulo|nombre|name|title)$/i.test(cells[0])) continue;
+    rows.push(cells);
+  }
+  return rows;
+}

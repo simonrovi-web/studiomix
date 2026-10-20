@@ -34,8 +34,8 @@ function loadSettings() {
   let saved = {};
   try {
     saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
-  } catch {
-    // Start from defaults.
+  } catch (err) {
+    console.warn('Ajustes dañados; se usan los predeterminados:', err);
   }
   // Settings from 0.1 had a single stream URL/key.
   if (saved.streamUrl && !saved.destinations) {

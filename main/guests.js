@@ -13,7 +13,9 @@ const { WebSocketServer } = require('ws');
 const QRCode = require('qrcode');
 const { lanAddresses } = require('./remote.js');
 
-const GUEST_DIR = path.join(__dirname, 'guest');
+const log = require('./log').scope('guests');
+
+const GUEST_DIR = path.join(__dirname, '..', 'guest');
 const STATIC = {
   '/guest': ['index.html', 'text/html; charset=utf-8'],
   '/guest/': ['index.html', 'text/html; charset=utf-8'],
@@ -37,7 +39,8 @@ class GuestServer {
   loadConfig() {
     try {
       return { port: 8089, ...JSON.parse(fs.readFileSync(this.configFile, 'utf8')) };
-    } catch {
+    } catch (err) {
+      if (err.code !== 'ENOENT') log.warn('La configuración de invitados no es válida; se crea una nueva:', err.message);
       return { port: 8089, code: crypto.randomBytes(5).toString('hex') };
     }
   }

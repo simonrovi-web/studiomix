@@ -7,7 +7,6 @@ import {
   ImageInput,
   INPUT_ICONS,
   INPUT_TYPE_LABELS,
-  parseTitleList,
   MicInput,
   ScreenInput,
   TitleInput,
@@ -17,7 +16,7 @@ import { SceneInput } from './scenes.js';
 import { OVERLAY_COUNT, app, changed, overlayIndexOf, state } from './store.js';
 import { CropEditor } from './ui-crop.js';
 import { openSceneDock } from './ui-scenes.js';
-import { DEFAULT_TITLE, FIELD_LABELS, NUMERIC_FIELDS, TEMPLATE_PRESETS, TITLE_TEMPLATES } from './titles.js';
+import { DEFAULT_TITLE, FIELD_LABELS, NUMERIC_FIELDS, TEMPLATE_PRESETS, TITLE_TEMPLATES, parseTitleList } from './titles.js';
 import { ask, fillSelect, showMenu, toast } from './ui-common.js';
 import { $, $$, drawChecker, fmtTime, h } from './util.js';
 

@@ -2,7 +2,7 @@ import { DEFAULT_FX, EffectProcessor, needsGpu, parseCube, presetLut } from './e
 import { BackgroundRemover } from './segmenter.js';
 
 const EMPTY_MASK = Object.assign(document.createElement('canvas'), { width: 1, height: 1 });
-import { DEFAULT_TITLE, TEMPLATE_PRESETS, TITLE_TEMPLATES } from './titles.js';
+import { DEFAULT_TITLE, TEMPLATE_PRESETS, TITLE_TEMPLATES, parseTitleList } from './titles.js';
 import { drawChecker, drawFitted, drawPlaceholder, framedRect } from './util.js';
 
 let seq = 0;
@@ -501,38 +501,6 @@ export class ColorInput extends Input {
     super.restore(data);
     this.color2 = data.color2 ?? null;
   }
-}
-
-/**
- * Parses a title list: one entry per line, fields separated by "|", ";" or ","
- * (CSV with optional quotes). Empty lines and a "titulo,subtitulo" header are skipped.
- */
-export function parseTitleList(text) {
-  if (!text) return [];
-  const rows = [];
-  for (const raw of String(text).split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line) continue;
-    const sep = line.includes('|') ? '|' : line.includes(';') ? ';' : ',';
-    const cells = [];
-    let cur = '';
-    let quoted = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"' && line[i + 1] === '"' && quoted) {
-        cur += '"';
-        i++;
-      } else if (c === '"') quoted = !quoted;
-      else if (c === sep && !quoted) {
-        cells.push(cur.trim());
-        cur = '';
-      } else cur += c;
-    }
-    cells.push(cur.trim());
-    if (rows.length === 0 && /^(t[ií]tulo|nombre|name|title)$/i.test(cells[0])) continue;
-    rows.push(cells);
-  }
-  return rows;
 }
 
 export class TitleInput extends Input {

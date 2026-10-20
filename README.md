@@ -125,14 +125,32 @@ segundo plano y se instala al cerrar; nunca reinicia la app en mitad de un direc
 
 ## Arquitectura
 
-- `main.js`: proceso principal. Protocolo `app://`, FFmpeg por salida (con `tee`
-  para multistream y segmentos para el replay), entradas de red, modelos,
-  autoguardado, métricas y actualizaciones.
-- `remote.js`: servidor HTTP/WebSocket de la API y del mando (`remote/`).
-- `guests.js`: servidor HTTPS de invitados y señalización WebRTC (`guest/`).
-- `renderer/js/`: compositor (Program, Preview, multiview, vertical),
-  efectos WebGL2, segmentación, audio (Web Audio + worklets de DSP), salidas,
-  escenas, MIDI, chat, invitados y la interfaz (`ui-*.js`).
+- `main.js`: proceso principal: ciclo de vida, ventana y canales IPC.
+- `main/`: el trabajo del proceso principal, por áreas:
+  - `ffmpeg.js`: códecs disponibles y argumentos de FFmpeg (funciones puras, con tests).
+  - `outputs.js`: emisión, grabación, ISO y búfer de repetición.
+  - `media.js`: protocolo `app://`, archivos permitidos, optimizar vídeo y modelos.
+  - `netinputs.js`: entradas SRT/RTSP/RTMP/UDP/HLS.
+  - `session.js`: proyectos, autoguardado y recuperación tras un cierre inesperado.
+  - `system.js`, `updates.js`: métricas, test de subida y actualizaciones.
+  - `log.js`: registro en `%APPDATA%\StudioMix\logs\main.log` (incluye errores de la interfaz).
+  - `remote.js`: servidor HTTP/WebSocket de la API y del mando (`remote/`).
+  - `guests.js`: servidor HTTPS de invitados y señalización WebRTC (`guest/`).
+- `renderer/js/`: `app.js` crea los servicios y arranca la interfaz;
+  `actions.js` reúne las acciones (botones, teclado, MIDI, API); compositor
+  (Program, Preview, multiview, vertical), efectos WebGL2, segmentación, audio
+  (Web Audio + worklets de DSP), salidas, escenas, MIDI, chat, invitados y la
+  interfaz (`ui-*.js`).
+
+## Desarrollo
+
+```bash
+npm install
+npm start        # abrir la app
+npm run lint     # ESLint
+npm test         # tests (node:test)
+npm run dist     # instalador y portable en out/
+```
 
 ## Relación con OBS Studio
 

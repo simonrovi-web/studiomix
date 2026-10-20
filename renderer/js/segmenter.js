@@ -37,7 +37,8 @@ export class BackgroundRemover {
         });
       try {
         this.segmenter = await create('GPU');
-      } catch {
+      } catch (err) {
+        console.warn('Segmentación sin GPU, se usa la CPU:', err);
         this.segmenter = await create('CPU');
       }
       this.state = 'ready';

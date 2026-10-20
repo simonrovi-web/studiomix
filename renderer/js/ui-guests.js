@@ -53,7 +53,7 @@ async function onSignal({ guestId, data }) {
       await pc.setLocalDescription(answer);
       window.studio.guestSignal(guestId, { type: 'answer', sdp: pc.localDescription.toJSON() });
     } else if (data.type === 'candidate' && data.candidate && peer.pc) {
-      await peer.pc.addIceCandidate(data.candidate).catch(() => {});
+      await peer.pc.addIceCandidate(data.candidate).catch((err) => console.warn('Candidato ICE rechazado', guestId, err));
     }
   } catch (err) {
     console.warn('Invitado', err);

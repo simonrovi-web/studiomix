@@ -9,6 +9,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "lint": "eslint .",
+    "test": "node --test",
+    "check": "eslint . && node --test",
     "dist": "electron-builder --win nsis portable --x64",
     "dist:dir": "electron-builder --win dir --x64",
     "release": "electron-builder --win nsis portable --x64 --publish always"
@@ -22,8 +25,11 @@
     "ws": "^8.22.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "electron": "^44.9.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "eslint": "^9.39.5",
+    "globals": "^16.5.0"
   },
   "build": {
     "appId": "app.studiomix.desktop",
@@ -34,9 +40,8 @@
     },
     "files": [
       "main.js",
+      "main/**",
       "preload.js",
-      "remote.js",
-      "guests.js",
       "renderer/**",
       "remote/**",
       "guest/**",
