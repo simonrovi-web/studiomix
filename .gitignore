@@ -4,3 +4,7 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+
+# Code-signing certificates never go in the repository.
+*.pfx
+*.p12

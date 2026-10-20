@@ -1,7 +1,7 @@
 {
   "name": "studiomix",
   "productName": "StudioMix",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Mezclador de vídeo en directo: escenas, gráficos, audio, multistream, vertical, invitados y control remoto.",
   "author": "StudioMix contributors",
@@ -59,7 +59,13 @@
         "nsis",
         "portable"
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "signtoolOptions": {
+        "signingHashAlgorithms": [
+          "sha256"
+        ],
+        "rfc3161TimeStampServer": "http://timestamp.digicert.com"
+      }
     },
     "portable": {
       "artifactName": "StudioMix-Portable-${version}.${ext}"
@@ -73,6 +79,15 @@
       "shortcutName": "StudioMix",
       "artifactName": "StudioMix-Setup-${version}.${ext}"
     },
-    "publish": null
+    "publish": null,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "enableCookieEncryption": true,
+      "grantFileProtocolExtraPrivileges": false
+    }
   }
 }

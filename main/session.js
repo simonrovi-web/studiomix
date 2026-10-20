@@ -1,8 +1,9 @@
 'use strict';
 
 // Projects, autosave and crash recovery. A lock file exists while the app
-// runs; finding it at start-up means the last session didn't close cleanly,
-// so its autosave can be offered for recovery.
+// runs; finding it at start-up means the last session didn't close cleanly.
+// Its autosave is then moved aside to recovery.studiomix, so the new session's
+// autosaves can't overwrite it while the user decides whether to recover it.
 
 const { app } = require('electron');
 const fs = require('node:fs');
@@ -11,14 +12,22 @@ const media = require('./media');
 const log = require('./log').scope('session');
 
 const autosaveFile = () => path.join(app.getPath('userData'), 'autosave.studiomix');
+const recoveryFile = () => path.join(app.getPath('userData'), 'recovery.studiomix');
 const lockFile = () => path.join(app.getPath('userData'), 'session.lock');
 let previousSessionCrashed = false;
 
 function startSessionLock() {
   try {
-    previousSessionCrashed = fs.existsSync(lockFile()) && fs.existsSync(autosaveFile());
+    if (fs.existsSync(lockFile()) && fs.existsSync(autosaveFile())) {
+      // rename keeps the file's date, which the recovery prompt shows.
+      fs.renameSync(autosaveFile(), recoveryFile());
+      previousSessionCrashed = true;
+      log.warn('La sesión anterior no se cerró bien; se ofrecerá recuperarla');
+    } else {
+      // A recovery left over from an earlier start was already offered.
+      previousSessionCrashed = false;
+    }
     fs.writeFileSync(lockFile(), String(process.pid));
-    if (previousSessionCrashed) log.warn('La sesión anterior no se cerró bien; se ofrecerá recuperarla');
   } catch (err) {
     previousSessionCrashed = false;
     log.warn('No se pudo crear el bloqueo de sesión:', err.message);
@@ -67,7 +76,7 @@ async function writeAutosave(json) {
 async function checkRecovery() {
   if (!previousSessionCrashed) return null;
   try {
-    const stat = await fs.promises.stat(autosaveFile());
+    const stat = await fs.promises.stat(recoveryFile());
     return { savedAt: stat.mtimeMs };
   } catch {
     return null; // The autosave vanished since start-up: nothing to recover.
@@ -76,12 +85,13 @@ async function checkRecovery() {
 
 async function loadRecovery() {
   previousSessionCrashed = false;
-  const result = await readProjectFile(autosaveFile());
+  const result = await readProjectFile(recoveryFile());
   return { ...result, file: null };
 }
 
 function discardRecovery() {
   previousSessionCrashed = false;
+  fs.promises.rm(recoveryFile(), { force: true }).catch((err) => log.warn('No se pudo borrar la recuperación:', err.message));
 }
 
 module.exports = {

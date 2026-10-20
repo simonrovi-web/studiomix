@@ -170,6 +170,27 @@ npm test         # tests (node:test)
 npm run dist     # instalador y portable en out/
 ```
 
+Los ejecutables salen protegidos: no aceptan `--inspect`, `NODE_OPTIONS` ni
+`ELECTRON_RUN_AS_NODE`, comprueban la integridad de `app.asar` y solo cargan la
+aplicación desde él (fusibles de Electron en `package.json` → `electronFuses`).
+
+### Firmar los ejecutables
+
+Sin firma, Windows muestra «Windows protegió su PC» (SmartScreen) al abrir el
+instalador. Con un certificado de firma de código (OV o EV) basta con indicar
+dónde está antes de `npm run dist`; el certificado nunca se guarda en el
+repositorio (`*.pfx` está en `.gitignore`):
+
+```powershell
+$env:CSC_LINK = "C:\ruta\certificado.pfx"
+$env:CSC_KEY_PASSWORD = "contraseña del certificado"
+npm run dist
+```
+
+Se firma con SHA-256 y sello de tiempo (la firma sigue siendo válida cuando el
+certificado caduque). Como alternativa más barata, Azure Trusted Signing se
+configura con `build.win.azureSignOptions`.
+
 ## Relación con OBS Studio
 
 Las escenas, los filtros, las transiciones luma wipe y stinger y el búfer de
