@@ -61,6 +61,12 @@ contextBridge.exposeInMainWorld('studio', {
     ipcRenderer.on('api:clients', handler);
     return () => ipcRenderer.removeListener('api:clients', handler);
   },
+  prepareStinger: (file, opts) => ipcRenderer.invoke('stinger:prepare', file, opts),
+  onStingerProgress: (callback) => {
+    const handler = (_event, status) => callback(status);
+    ipcRenderer.on('stinger:progress', handler);
+    return () => ipcRenderer.removeListener('stinger:progress', handler);
+  },
   probeMedia: (file) => ipcRenderer.invoke('media:probe', file),
   optimizeMedia: (file) => ipcRenderer.invoke('media:optimize', file),
   onOptimizeProgress: (callback) => {

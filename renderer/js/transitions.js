@@ -155,7 +155,8 @@ export class Stinger {
       this.el.remove();
       this.el = null;
     }
-    this.path = file?.path ?? '';
+    // A converted clip (MOV with alpha, HTML) remembers the file the user picked.
+    this.path = file?.source ?? file?.path ?? '';
     this.playing = false;
     if (!file) return;
     const el = document.createElement('video');

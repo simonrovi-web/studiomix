@@ -4,6 +4,7 @@
 import { loadProject, serializeProject } from './project.js';
 import { app, changed, onChange, state } from './store.js';
 import { confirmAction, toast } from './ui-common.js';
+import { loadStinger } from './stinger-files.js';
 
 let projectPath = null;
 
@@ -25,12 +26,15 @@ export async function saveProject(saveAs = false) {
 
 /** Replaces the montage with a loaded project; returns the inputs that couldn't be restored. */
 async function applyProject(result) {
-  const { actions, compositor } = app;
+  const { actions } = app;
   actions.clearInputs();
   const skipped = await loadProject(result.data, result.media, actions.addInput);
   const stingerPath = result.data.transition?.stinger?.path;
-  compositor.stinger.load(stingerPath ? result.media[stingerPath] ?? null : null);
-  state.transition.stinger.path = compositor.stinger.path;
+  try {
+    await loadStinger(stingerPath ? result.media[stingerPath] ?? null : null);
+  } catch (err) {
+    toast(`No se pudo cargar el stinger: ${err.message}`, 'error');
+  }
   changed();
   return skipped;
 }

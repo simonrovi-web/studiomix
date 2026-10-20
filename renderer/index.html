@@ -464,11 +464,12 @@
         <legend>Stinger</legend>
         <div class="row nowrap">
           <span id="stinger-name" class="muted small grow">Sin clip</span>
-          <button type="button" id="btn-stinger-file">Elegir vídeo…</button>
+          <button type="button" id="btn-stinger-file">Elegir clip o HTML…</button>
           <button type="button" id="btn-stinger-clear" title="Quitar clip">✕</button>
         </div>
         <label class="field">Punto de corte (ms desde el inicio del clip) <input name="cutPoint" type="number" min="0" max="20000" step="10"></label>
-        <p class="muted small">Usa un vídeo WebM con transparencia (VP9 + alfa) para que se vea la escena por debajo. El cambio de plano ocurre en el punto de corte, mientras el clip sigue reproduciéndose. El clip del stinger se guarda en el proyecto.</p>
+        <label class="field" id="stinger-html" hidden>Duración de la animación HTML (ms) <input name="htmlDuration" type="number" min="200" max="15000" step="100"></label>
+        <p class="muted small">Admite vídeo con transparencia: WebM (VP9 + alfa) o MOV con alfa (ProRes 4444, Animation, PNG), que se convierte una vez a WebM al elegirlo. También una animación HTML con fondo transparente: se graba una vez al tamaño y fps de la salida. El cambio de plano ocurre en el punto de corte, mientras el clip sigue reproduciéndose. El stinger se guarda en el proyecto.</p>
       </fieldset>
       <menu><button value="ok" class="accent">Cerrar</button></menu>
     </form>

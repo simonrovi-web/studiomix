@@ -11,6 +11,7 @@ import { handleSceneKey, previewScene, renderDock } from './ui-scenes.js';
 import { renderGuide } from './ui-guide.js';
 import { midiFeedback } from './midi-actions.js';
 import { openProject, saveProject } from './ui-projects.js';
+import { isHtml, loadStinger } from './stinger-files.js';
 import { $, $$, fmtTime, h } from './util.js';
 
 function refresh() {
@@ -98,10 +99,30 @@ async function openTransitionOptions() {
   form.softness.value = luma.softness;
   form.invert.checked = luma.invert;
   form.cutPoint.value = stinger.cutPoint;
-  const showStinger = () => {
-    $('#stinger-name').textContent = compositor.stinger.path ? compositor.stinger.path.split(/[\\/]/).pop() : 'Sin clip';
+  form.htmlDuration.value = stinger.htmlDurationMs ?? 2000;
+  const showStinger = (text) => {
+    const name = compositor.stinger.path ? compositor.stinger.path.split(/[\\/]/).pop() : 'Sin clip';
+    $('#stinger-name').textContent = text ?? name;
+    $('#stinger-html').hidden = !isHtml(compositor.stinger.path);
   };
   showStinger();
+  let busy = false;
+  const prepare = async (file) => {
+    if (busy) return;
+    busy = true;
+    const name = file.path.split(/[\\/]/).pop();
+    showStinger(isHtml(file.path) ? `Grabando la animación ${name}…` : `Preparando ${name}…`);
+    try {
+      const ready = await loadStinger(file, (p) => showStinger(`Preparando ${name}… ${Math.round(p * 100)} %`));
+      showStinger();
+      if (ready?.converted && !ready.reused) toast(ready.plan === 'html' ? 'Animación HTML lista como stinger (con transparencia).' : 'Clip convertido a WebM con transparencia y listo como stinger.');
+    } catch (err) {
+      showStinger();
+      toast(`No se pudo usar «${name}» como stinger: ${err.message}`, 'error');
+    } finally {
+      busy = false;
+    }
+  };
   form.oninput = () => {
     luma.pattern = form.pattern.value;
     luma.softness = Number(form.softness.value);
@@ -109,17 +130,22 @@ async function openTransitionOptions() {
     stinger.cutPoint = Math.max(0, Number(form.cutPoint.value) || 0);
     saveSettings();
   };
-  form.onchange = form.oninput;
+  form.onchange = (e) => {
+    form.oninput();
+    // A new length for an HTML animation means recording it again.
+    if (e.target === form.htmlDuration) {
+      stinger.htmlDurationMs = Math.min(15000, Math.max(200, Number(form.htmlDuration.value) || 2000));
+      form.htmlDuration.value = stinger.htmlDurationMs;
+      saveSettings();
+      if (isHtml(stinger.path)) prepare({ path: stinger.path });
+    }
+  };
   $('#btn-stinger-file').onclick = async () => {
-    const [file] = await window.studio.openMedia('video');
-    if (!file) return;
-    compositor.stinger.load(file);
-    stinger.path = file.path;
-    showStinger();
+    const [file] = await window.studio.openMedia('stinger');
+    if (file) await prepare(file);
   };
   $('#btn-stinger-clear').onclick = () => {
-    compositor.stinger.load(null);
-    stinger.path = '';
+    loadStinger(null);
     showStinger();
   };
   await ask(dlg);

@@ -23,7 +23,7 @@ export function serializeProject() {
       transition: {
         type: state.transition.type,
         duration: state.transition.duration,
-        stinger: { path: state.transition.stinger.path, cutPoint: state.transition.stinger.cutPoint },
+        stinger: { path: state.transition.stinger.path, cutPoint: state.transition.stinger.cutPoint, htmlDurationMs: state.transition.stinger.htmlDurationMs },
         luma: { ...state.transition.luma },
       },
       programIndex: state.inputs.findIndex((i) => i.id === state.programId),

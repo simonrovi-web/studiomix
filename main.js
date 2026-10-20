@@ -26,6 +26,7 @@ const projects = require('./main/session');
 const system = require('./main/system');
 const updates = require('./main/updates');
 const screens = require('./main/screens');
+const stingers = require('./main/stingers');
 const { RemoteServer, lanAddresses } = require('./main/remote');
 const { GuestServer } = require('./main/guests');
 
@@ -163,6 +164,7 @@ function registerIpc() {
   // --- media ---
   ipcMain.handle('media:probe', (_event, file) => media.probeMedia(file));
   ipcMain.handle('media:optimize', (_event, file) => media.optimizeMedia(file));
+  ipcMain.handle('stinger:prepare', (_event, file, opts) => stingers.prepareStinger(file, opts || {}));
   ipcMain.handle('model:ensure', (_event, name) => media.ensureModel(String(name)));
 
   // --- projects ---

@@ -34,6 +34,11 @@ de 3 s que se puede cancelar.
   **invitados remotos**.
 - Preview/Program con Cut, Auto, T-bar y transiciones: fundido, fundido a negro,
   cortinilla, deslizar, zoom, iris, luma wipe (13 patrones) y stinger.
+- **Stingers con transparencia:** WebM con alfa, **MOV con alfa** (ProRes 4444,
+  Animation, PNG) o una **animación HTML** con fondo transparente. El MOV se
+  convierte una vez a WebM con alfa y el HTML se graba una vez al tamaño y fps
+  de la salida (eliges su duración), así la transición no consume nada en
+  directo. Las conversiones se guardan y se reutilizan.
 - Vistas Estudio, Multiview (tally, vúmetros, reloj) y Vertical.
 - 4 capas (overlays) con posiciones de pantalla completa, PiP, mitades o lado a lado.
 - Escenas por capas editables sobre Preview: mover, escalar, rotar, imán con
@@ -145,6 +150,7 @@ segundo plano y se instala al cerrar; nunca reinicia la app en mitad de un direc
   - `session.js`: proyectos, autoguardado y recuperación tras un cierre inesperado.
   - `system.js`, `updates.js`: métricas, test de subida y actualizaciones.
   - `screens.js`: ventanas de salida en otras pantallas.
+  - `stingers.js`: convierte MOV con alfa y animaciones HTML en WebM con alfa.
   - `log.js`: registro en `%APPDATA%\StudioMix\logs\main.log` (incluye errores de la interfaz).
   - `remote.js`: servidor HTTP/WebSocket de la API y del mando (`remote/`).
   - `guests.js`: servidor HTTPS de invitados y señalización WebRTC (`guest/`).

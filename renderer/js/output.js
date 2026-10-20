@@ -1,33 +1,32 @@
 // Output window (Program, Preview or Multiview on a monitor or projector).
 // The main window opened it, so it takes the video straight from there.
+// It never shows text to the audience: without video it simply stays black.
 (() => {
   const source = new URLSearchParams(location.search).get('source');
   const video = document.getElementById('video');
 
   function attach() {
     const stream = window.opener?.studioMixScreens?.streamFor(source);
-    if (!stream) {
-      document.getElementById('nosignal').hidden = false;
-      return false;
-    }
+    if (!stream) return false;
     video.srcObject = stream;
     return true;
   }
 
-  if (!attach()) {
-    // The main window may still be starting up.
-    const retry = setInterval(() => attach() && clearInterval(retry), 1000);
-  }
+  // The main window may still be starting up, or reloading.
+  const retry = setInterval(() => {
+    const track = video.srcObject?.getVideoTracks()[0];
+    if (!track || track.readyState === 'ended') attach();
+  }, 1000);
+  attach();
+  window.addEventListener('unload', () => clearInterval(retry));
 
-  // The pointer and the hint disappear while the mouse is still.
+  // Pointer and hint appear only while the mouse moves over the output.
   let idleTimer = 0;
-  const wake = () => {
-    document.body.classList.remove('idle');
+  document.addEventListener('mousemove', () => {
+    document.body.classList.add('awake');
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => document.body.classList.add('idle'), 2500);
-  };
-  document.addEventListener('mousemove', wake);
-  wake();
+    idleTimer = setTimeout(() => document.body.classList.remove('awake'), 2500);
+  });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') window.close();

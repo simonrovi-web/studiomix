@@ -45,6 +45,9 @@ const MEDIA_FILTERS = {
   video: [{ name: 'Vídeo', extensions: ['mp4', 'm4v', 'mov', 'webm', 'mkv'] }],
   image: [{ name: 'Imagen', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'] }],
   audio: [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'] }],
+  stinger: [
+    { name: 'Stinger (vídeo con alfa o animación HTML)', extensions: ['webm', 'mov', 'mp4', 'm4v', 'mkv', 'avi', 'html', 'htm'] },
+  ],
 };
 
 // Only files the user picked (dialog, opened project, our own output) can be served.

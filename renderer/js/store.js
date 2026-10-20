@@ -18,7 +18,7 @@ export const DEFAULT_SETTINGS = {
   recordFormat: 'mp4',
   recordMbps: 16,
   limiter: true,
-  stinger: { path: '', cutPoint: 500 },
+  stinger: { path: '', cutPoint: 500, htmlDurationMs: 2000 },
   luma: { pattern: 'linearH', softness: 0.1, invert: false },
   replaySeconds: 20,
   replayAsInput: true,

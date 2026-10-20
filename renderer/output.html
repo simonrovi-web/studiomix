@@ -6,25 +6,21 @@
         content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self' mediastream: blob:">
   <title>StudioMix · Salida</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
     video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
-    body.idle { cursor: none; }
+    body.awake { cursor: default; }
+    /* Only shown while the operator moves the mouse over the output; the audience never sees text. */
     .hint {
       position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
       font: 13px "Segoe UI", system-ui, sans-serif; color: #e7eaf0; background: rgba(0, 0, 0, 0.7);
-      padding: 6px 12px; border-radius: 6px; transition: opacity 0.3s; pointer-events: none;
+      padding: 6px 12px; border-radius: 6px; transition: opacity 0.3s; pointer-events: none; opacity: 0;
     }
-    body.idle .hint { opacity: 0; }
-    .nosignal {
-      position: fixed; inset: 0; display: grid; place-items: center;
-      font: 600 20px "Segoe UI", system-ui, sans-serif; color: #8a93a4;
-    }
+    body.awake .hint { opacity: 1; }
   </style>
 </head>
 <body>
   <video id="video" autoplay muted playsinline></video>
-  <div id="nosignal" class="nosignal" hidden>Sin señal: StudioMix se ha cerrado</div>
-  <div id="hint" class="hint">Esc o doble clic para cerrar esta salida</div>
+  <div class="hint">Esc o doble clic para cerrar esta salida</div>
   <script src="js/output.js"></script>
 </body>
 </html>
