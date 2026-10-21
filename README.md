@@ -59,6 +59,11 @@ de 3 s que se puede cancelar.
   cristal minimalista, neón, pop inclinado, elegante (eventos), cita destacada,
   entrevista (dos nombres), llamada a la acción («Suscríbete» con campanita) y
   etiqueta superior «EN DIRECTO». Cada una trae sus colores y textos de ejemplo.
+- **Gráficos con tu logo** (PNG, WebP o SVG con transparencia, se cambia cuando
+  quieras desde el editor): rótulo con logo, logo en esquina (mosca, con
+  esquina, tamaño y opacidad), presentación con logo (zoom y destello) y
+  patrocinador. El noticiero, el cristal y la etiqueta superior también lo
+  muestran si eliges uno. El logo se guarda con el proyecto.
 - **Listas de rótulos:** pega o carga un CSV (`Nombre | Cargo` por línea) y pasa
   de uno a otro con ◀ ▶▶ en la tarjeta, por MIDI o por la API.
 

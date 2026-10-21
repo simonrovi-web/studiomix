@@ -16,7 +16,7 @@ import { SceneInput } from './scenes.js';
 import { OVERLAY_COUNT, app, changed, overlayIndexOf, state } from './store.js';
 import { CropEditor } from './ui-crop.js';
 import { openSceneDock } from './ui-scenes.js';
-import { DEFAULT_TITLE, FIELD_LABELS, NUMERIC_FIELDS, TEMPLATE_PRESETS, TITLE_TEMPLATES, parseTitleList } from './titles.js';
+import { DEFAULT_TITLE, FIELD_LABELS, NUMERIC_FIELDS, SELECT_FIELDS, TEMPLATE_PRESETS, TITLE_TEMPLATES, parseTitleList } from './titles.js';
 import { ask, fillSelect, showMenu, toast } from './ui-common.js';
 import { $, $$, drawChecker, fmtTime, h } from './util.js';
 
@@ -347,16 +347,43 @@ export async function editTitle(input) {
   const fieldBox = $('#title-fields');
   const renderFields = () => {
     const template = TITLE_TEMPLATES[form.template.value];
+    const control = (key) => {
+      if (SELECT_FIELDS[key]) {
+        const select = h('select', { name: `f-${key}` }, ...SELECT_FIELDS[key].map(([v, label]) => h('option', { value: v }, label)));
+        select.value = fields[key];
+        return select;
+      }
+      return h('input', {
+        name: `f-${key}`,
+        type: NUMERIC_FIELDS.has(key) ? 'number' : 'text',
+        min: NUMERIC_FIELDS.has(key) ? 0 : null,
+        max: key === 'logoOpacity' ? 100 : key === 'logoSize' ? 60 : null,
+        step: key === 'minutes' ? 0.5 : null,
+        value: fields[key],
+      });
+    };
+    // Logo picker for templates that show one.
+    const logoRow = template.logo
+      ? h('div', { class: 'field' },
+          template.logo === 'required' ? 'Logo' : 'Logo (opcional)',
+          h('div', { class: 'row nowrap' },
+            h('span', { class: 'muted small grow', title: fields.logoPath || '' }, fields.logoPath ? fields.logoPath.split(/[\\/]/).pop() : 'Sin logo: PNG, WebP o SVG con transparencia'),
+            h('button', {
+              type: 'button',
+              onclick: async () => {
+                const [file] = await window.studio.openMedia('logo');
+                if (!file) return;
+                fields = { ...fields, ...read(), logoPath: file.path };
+                renderFields();
+              },
+            }, fields.logoPath ? 'Cambiar logo…' : 'Elegir logo…'),
+            fields.logoPath ? h('button', { type: 'button', title: 'Quitar el logo', onclick: () => { fields = { ...fields, ...read(), logoPath: '' }; renderFields(); } }, '✕') : null,
+          ),
+        )
+      : null;
     fieldBox.replaceChildren(
-      ...template.uses.map((key) =>
-        h('label', { class: 'field' }, template.labels?.[key] ?? FIELD_LABELS[key], h('input', {
-          name: `f-${key}`,
-          type: NUMERIC_FIELDS.has(key) ? 'number' : 'text',
-          min: NUMERIC_FIELDS.has(key) ? 0 : null,
-          step: key === 'minutes' ? 0.5 : null,
-          value: fields[key],
-        })),
-      ),
+      ...(logoRow ? [logoRow] : []),
+      ...template.uses.map((key) => h('label', { class: 'field' }, template.labels?.[key] ?? FIELD_LABELS[key], control(key))),
     );
   };
   renderFields();
@@ -383,7 +410,7 @@ export async function editTitle(input) {
       bgColor: form.bgColor.value,
       bgOpacity: Number(form.bgOpacity.value),
     };
-    for (const el of $$('input', fieldBox)) {
+    for (const el of $$('input, select', fieldBox)) {
       const key = el.name.slice(2);
       out[key] = NUMERIC_FIELDS.has(key) ? Number(el.value) || 0 : el.value;
     }
@@ -400,7 +427,7 @@ export async function editTitle(input) {
     drawChecker(ctx, 0, 0, canvas.width, canvas.height);
     // Replay the entry animation every few seconds.
     const anim = Math.min(1, ((now - opened) % 4000) / 500);
-    sample.render(ctx, 0, 0, canvas.width, canvas.height, now, 'preview', anim);
+    sample.render(ctx, 0, 0, canvas.width, canvas.height, now, 'editor', anim);
     raf = requestAnimationFrame(paint);
   };
   raf = requestAnimationFrame(paint);

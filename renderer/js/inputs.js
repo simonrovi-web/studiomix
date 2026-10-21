@@ -579,9 +579,28 @@ export class TitleInput extends Input {
     return list;
   }
 
-  render(ctx, x, y, w, h, time, _mode, anim = 1) {
+  /** The logo image for fields.logoPath once loaded, or null. */
+  logoImage() {
+    const key = this.fields.logoPath || '';
+    if (key !== this.logoKey) {
+      this.logoKey = key;
+      this.logo = null;
+      if (key) {
+        const img = new Image();
+        img.onload = () => {
+          if (this.logoKey === key) this.logo = img;
+        };
+        img.onerror = () => console.warn('No se pudo cargar el logo', key);
+        img.src = mediaUrl(key);
+      }
+    }
+    return this.logo;
+  }
+
+  render(ctx, x, y, w, h, time, mode, anim = 1) {
     ctx.save();
-    this.template.draw(ctx, x, y, w, h, this.fields, { time, anim, elapsed: this.elapsed(time) });
+    // `editing` shows a placeholder where a logo goes until one is chosen.
+    this.template.draw(ctx, x, y, w, h, this.fields, { time, anim, elapsed: this.elapsed(time), logo: this.logoImage(), editing: mode === 'editor' });
     ctx.restore();
   }
 

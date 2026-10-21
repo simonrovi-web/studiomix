@@ -59,3 +59,43 @@ export function roundBox(ctx, x, y, w, h, r, fill) {
   ctx.fillStyle = fill;
   ctx.fill();
 }
+
+/**
+ * Draws `img` fitted inside the box (keeping its proportions and transparency).
+ * `align` places it horizontally: 'left', 'center' or 'right'. Returns the
+ * drawn size, or null when there is no image.
+ */
+export function drawLogo(ctx, img, x, y, maxW, maxH, align = 'center') {
+  const iw = img?.naturalWidth || img?.width;
+  const ih = img?.naturalHeight || img?.height;
+  if (!iw || !ih) return null;
+  const scale = Math.min(maxW / iw, maxH / ih);
+  const w = iw * scale;
+  const h = ih * scale;
+  const dx = align === 'left' ? x : align === 'right' ? x + maxW - w : x + (maxW - w) / 2;
+  ctx.drawImage(img, dx, y + (maxH - h) / 2, w, h);
+  return { x: dx, y: y + (maxH - h) / 2, w, h };
+}
+
+/** Dashed "LOGO" box shown in the editor until a logo is chosen. */
+export function logoPlaceholder(ctx, x, y, w, h, s) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.setLineDash([10 * s, 8 * s]);
+  ctx.lineWidth = 3 * s;
+  ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.font = font(800, Math.min(h * 0.32, w * 0.22));
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('LOGO', x + w / 2, y + h / 2);
+  ctx.restore();
+}
+
+/** Width a logo will take at height `h` (0 without logo; a square while editing). */
+export function logoWidth(img, h, editing) {
+  const iw = img?.naturalWidth || img?.width;
+  const ih = img?.naturalHeight || img?.height;
+  if (iw && ih) return Math.min(h * 3, (iw / ih) * h);
+  return editing ? h : 0;
+}

@@ -1,5 +1,6 @@
 import { easeOut, font, measure, mmss, panel, wrap } from './title-kit.js';
 import { TITLE_STYLES, STYLE_PRESETS } from './title-styles.js';
+import { LOGO_STYLES, LOGO_PRESETS } from './title-logos.js';
 
 /**
  * Title templates draw on a transparent layer (unless `opaque`).
@@ -402,8 +403,8 @@ TITLE_TEMPLATES.comment = {
   },
 };
 
-// The other styles (news, glass, neon, pop…) live in title-styles.js.
-Object.assign(TITLE_TEMPLATES, TITLE_STYLES);
+// The other styles live in title-styles.js and, built around a logo, title-logos.js.
+Object.assign(TITLE_TEMPLATES, LOGO_STYLES, TITLE_STYLES);
 
 export const FIELD_LABELS = {
   title: 'Texto principal',
@@ -413,9 +414,22 @@ export const FIELD_LABELS = {
   teamB: 'Equipo B',
   scoreB: 'Puntos B',
   minutes: 'Minutos',
+  corner: 'Esquina',
+  logoSize: 'Tamaño del logo (% de la altura)',
+  logoOpacity: 'Opacidad del logo (%)',
 };
 
-export const NUMERIC_FIELDS = new Set(['scoreA', 'scoreB', 'minutes']);
+export const NUMERIC_FIELDS = new Set(['scoreA', 'scoreB', 'minutes', 'logoSize', 'logoOpacity']);
+
+/** Fields chosen from a list instead of typed. */
+export const SELECT_FIELDS = {
+  corner: [
+    ['tr', 'Arriba a la derecha'],
+    ['tl', 'Arriba a la izquierda'],
+    ['br', 'Abajo a la derecha'],
+    ['bl', 'Abajo a la izquierda'],
+  ],
+};
 
 export const DEFAULT_TITLE = {
   template: 'lowerThird',
@@ -426,6 +440,12 @@ export const DEFAULT_TITLE = {
   scoreA: 0,
   scoreB: 0,
   minutes: 5,
+  // Logo (any image; PNG/WebP/SVG keep their transparency). Templates with
+  // `logo` in their definition draw it.
+  logoPath: '',
+  corner: 'tr',
+  logoSize: 12,
+  logoOpacity: 90,
   accent: '#e8453c',
   textColor: '#ffffff',
   bgColor: '#101218',
@@ -434,6 +454,7 @@ export const DEFAULT_TITLE = {
 
 /** Sensible starting text when a template is picked in the editor. */
 export const TEMPLATE_PRESETS = {
+  ...LOGO_PRESETS,
   ...STYLE_PRESETS,
   ticker: { title: 'Última hora: escribe aquí el texto que se desplaza por la parte inferior', subtitle: 'ÚLTIMA HORA' },
   social: { title: '@micanal', subtitle: 'YouTube' },

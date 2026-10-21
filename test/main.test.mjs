@@ -57,12 +57,12 @@ test('concatLine uses forward slashes and escapes quotes', () => {
   assert.equal(outputs.concatLine("C:\\tmp\\it's.ts"), "file 'C:/tmp/it'\\''s.ts'");
 });
 
-test('projectMediaPaths finds input, mask and stinger files and ignores junk', () => {
+test('projectMediaPaths finds input, mask, title logo and stinger files and ignores junk', () => {
   const data = {
-    inputs: [{ path: 'a.mp4', fx: { maskPath: 'm.png' } }, { path: '' }, null, { fx: {} }],
+    inputs: [{ path: 'a.mp4', fx: { maskPath: 'm.png' } }, { path: '' }, null, { fx: {} }, { type: 'title', fields: { logoPath: 'logo.png' } }],
     transition: { stinger: { path: 's.webm' } },
   };
-  assert.deepEqual(session.projectMediaPaths(data), ['a.mp4', 'm.png', 's.webm']);
+  assert.deepEqual(session.projectMediaPaths(data), ['a.mp4', 'm.png', 'logo.png', 's.webm']);
   assert.deepEqual(session.projectMediaPaths({}), []);
   assert.deepEqual(session.projectMediaPaths(null), []);
 });

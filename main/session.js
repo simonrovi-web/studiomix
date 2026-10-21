@@ -42,11 +42,11 @@ function endSessionLock() {
   }
 }
 
-/** Paths of media a project refers to (inputs, masks, stinger). */
+/** Paths of media a project refers to (inputs, masks, title logos, stinger). */
 function projectMediaPaths(data) {
   const paths = [];
   for (const input of Array.isArray(data?.inputs) ? data.inputs : []) {
-    for (const p of [input?.path, input?.fx?.maskPath]) {
+    for (const p of [input?.path, input?.fx?.maskPath, input?.fields?.logoPath]) {
       if (typeof p === 'string' && p) paths.push(p);
     }
   }

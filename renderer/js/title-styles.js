@@ -3,7 +3,7 @@
 // titles.js: draw(ctx, x, y, w, h, fields, { time, anim, elapsed }), sizes
 // authored for 1080p and scaled to the target rect, anim 0→1 on entry.
 
-import { SERIF, clamp01, easeOut, easeOutBack, font, measure, panel, roundBox, wrap } from './title-kit.js';
+import { SERIF, clamp01, drawLogo, easeOut, easeOutBack, font, logoWidth, measure, panel, roundBox, wrap } from './title-kit.js';
 import { hexToRgba } from './util.js';
 
 const upper = (v) => String(v ?? '').toUpperCase();
@@ -62,7 +62,8 @@ export const TITLE_STYLES = {
     label: 'Noticiero (barra completa con hora)',
     uses: ['title', 'subtitle'],
     labels: { title: 'Titular', subtitle: 'Etiqueta (p. ej. ÚLTIMA HORA)' },
-    draw(ctx, x, y, w, h, t, { anim }) {
+    logo: 'optional',
+    draw(ctx, x, y, w, h, t, { anim, logo }) {
       const s = h / 1080;
       const barH = 112 * s;
       const by = y + h - 150 * s - barH;
@@ -75,11 +76,13 @@ export const TITLE_STYLES = {
       const clockW = 170 * s;
       const left = x + 60 * s;
       const full = w - 120 * s;
+      // Optional channel logo at the start of the bar, before the label.
+      const logoW = logo ? logoWidth(logo, barH - 28 * s, false) + 40 * s : 0;
       ctx.fillStyle = panel(ctx, t);
       ctx.fillRect(left, by, full * grow, barH);
       if (labelW) {
         ctx.fillStyle = t.accent;
-        ctx.fillRect(left, by, Math.min(labelW, full * grow), barH);
+        ctx.fillRect(left + logoW, by, Math.max(0, Math.min(labelW, full * grow - logoW)), barH);
       }
       // Clock block on the right.
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
@@ -87,16 +90,17 @@ export const TITLE_STYLES = {
       ctx.globalAlpha *= textAlpha;
       ctx.textBaseline = 'middle';
       ctx.fillStyle = '#fff';
+      if (logoW) drawLogo(ctx, logo, left + 20 * s, by + 14 * s, logoW - 40 * s, barH - 28 * s, 'center');
       if (labelW) {
         ctx.font = labelFont;
         ctx.textAlign = 'center';
-        ctx.fillText(upper(t.subtitle), left + labelW / 2, by + barH / 2);
+        ctx.fillText(upper(t.subtitle), left + logoW + labelW / 2, by + barH / 2);
       }
       ctx.fillStyle = t.textColor;
       ctx.textAlign = 'left';
       ctx.font = titleFont;
-      const tx = left + labelW + 34 * s;
-      const maxTitle = full - labelW - clockW - 60 * s;
+      const tx = left + logoW + labelW + 34 * s;
+      const maxTitle = full - logoW - labelW - clockW - 60 * s;
       ctx.save();
       ctx.beginPath();
       ctx.rect(tx, by, maxTitle, barH);
@@ -113,14 +117,18 @@ export const TITLE_STYLES = {
   glass: {
     label: 'Cristal minimalista',
     uses: ['title', 'subtitle'],
-    draw(ctx, x, y, w, h, t, { anim }) {
+    logo: 'optional',
+    draw(ctx, x, y, w, h, t, { anim, logo }) {
       const s = h / 1080;
       const titleFont = font(600, 50 * s);
       const subFont = font(400, 30 * s);
       const pad = 36 * s;
       ctx.letterSpacing = `${1.5 * s}px`;
-      const width = Math.max(measure(ctx, t.title, titleFont), measure(ctx, t.subtitle, subFont)) + pad * 2 + 30 * s;
       const height = (t.subtitle ? 140 : 96) * s;
+      // With a logo it takes the place of the accent dot.
+      const lw = logo ? logoWidth(logo, height - 40 * s, false) : 0;
+      const lead = lw ? lw + 26 * s : 30 * s;
+      const width = Math.max(measure(ctx, t.title, titleFont), measure(ctx, t.subtitle, subFont)) + pad * 2 + lead;
       const bx = x + 100 * s;
       const by = y + h - 120 * s - height + (1 - easeOut(anim)) * 40 * s;
       ctx.globalAlpha *= easeOut(anim);
@@ -131,15 +139,18 @@ export const TITLE_STYLES = {
       ctx.strokeStyle = 'rgba(255,255,255,0.35)';
       ctx.lineWidth = 1.5 * s;
       ctx.stroke();
-      // Accent dot.
-      ctx.fillStyle = t.accent;
-      ctx.beginPath();
-      ctx.arc(bx + pad, by + height / 2, 7 * s, 0, Math.PI * 2);
-      ctx.fill();
+      if (lw) {
+        drawLogo(ctx, logo, bx + pad - 6 * s, by + 20 * s, lw, height - 40 * s, 'left');
+      } else {
+        ctx.fillStyle = t.accent;
+        ctx.beginPath();
+        ctx.arc(bx + pad, by + height / 2, 7 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.fillStyle = t.textColor;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      const tx = bx + pad + 30 * s;
+      const tx = bx + pad + lead - (lw ? 6 * s : 0);
       ctx.font = titleFont;
       ctx.fillText(t.title, tx, t.subtitle ? by + 50 * s : by + height / 2);
       if (t.subtitle) {
@@ -371,29 +382,33 @@ export const TITLE_STYLES = {
   sectionTag: {
     label: 'Etiqueta superior (sección o EN DIRECTO)',
     uses: ['title'],
-    draw(ctx, x, y, w, h, t, { anim, time }) {
+    logo: 'optional',
+    draw(ctx, x, y, w, h, t, { anim, time, logo }) {
       const s = h / 1080;
       const tagFont = font(800, 32 * s);
       ctx.letterSpacing = `${2 * s}px`;
       const label = upper(t.title);
-      const tw = measure(ctx, label, tagFont) + 100 * s;
       const th = 64 * s;
+      // A logo goes first; the live dot stays after it.
+      const lw = logo ? logoWidth(logo, th - 20 * s, false) + 18 * s : 0;
+      const tw = measure(ctx, label, tagFont) + 100 * s + lw;
       const bx = x + 60 * s;
       const by = y + 50 * s - (1 - easeOut(anim)) * 120 * s;
       roundBox(ctx, bx, by, tw, th, 8 * s, panel(ctx, t));
+      if (lw) drawLogo(ctx, logo, bx + 16 * s, by + 10 * s, lw - 18 * s, th - 20 * s, 'left');
       // Pulsing dot, like a "live" light.
       const pulse = 0.55 + 0.45 * Math.abs(Math.sin(time / 500));
       ctx.fillStyle = t.accent;
       ctx.globalAlpha *= pulse;
       ctx.beginPath();
-      ctx.arc(bx + 36 * s, by + th / 2, 11 * s, 0, Math.PI * 2);
+      ctx.arc(bx + lw + 36 * s, by + th / 2, 11 * s, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha /= pulse;
       ctx.fillStyle = t.textColor;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       ctx.font = tagFont;
-      ctx.fillText(label, bx + 66 * s, by + th / 2 + 1 * s);
+      ctx.fillText(label, bx + lw + 66 * s, by + th / 2 + 1 * s);
     },
   },
 };
