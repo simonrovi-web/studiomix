@@ -1,7 +1,7 @@
 {
   "name": "studiomix",
   "productName": "StudioMix",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "Mezclador de vídeo en directo: escenas, gráficos, audio, multistream, vertical, invitados y control remoto.",
   "author": "StudioMix contributors",
