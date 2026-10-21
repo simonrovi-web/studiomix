@@ -48,3 +48,30 @@ test('framedRect applies crop, then zoom and pan inside the crop', () => {
   const zoomed = framedRect({ ...fx, zoom: 2, panX: 1, panY: -1 }, 1000, 1000);
   assert.deepEqual(zoomed, { x: 500, y: 0, w: 400, h: 250 });
 });
+
+test('every title template draws at the start, middle and end of its entry without errors', async () => {
+  const { TITLE_TEMPLATES, DEFAULT_TITLE, TEMPLATE_PRESETS, FIELD_LABELS } = await import('../renderer/js/titles.js');
+  // A 2D context stand-in: records nothing, measures text by length.
+  const ctx = new Proxy({}, {
+    get(target, prop) {
+      if (prop in target) return target[prop];
+      if (prop === 'measureText') return (text) => ({ width: String(text).length * 20 });
+      if (prop === 'createLinearGradient' || prop === 'createRadialGradient') return () => ({ addColorStop() {} });
+      return () => {};
+    },
+    set(target, prop, value) {
+      target[prop] = value;
+      return true;
+    },
+  });
+  const keys = Object.keys(TITLE_TEMPLATES);
+  assert.ok(keys.length >= 20, `${keys.length} templates`);
+  for (const key of keys) {
+    const t = TITLE_TEMPLATES[key];
+    assert.ok(t.label && typeof t.draw === 'function', key);
+    for (const field of t.uses) assert.ok(t.labels?.[field] ?? FIELD_LABELS[field], `${key}: label for ${field}`);
+    const fields = { ...DEFAULT_TITLE, ...(TEMPLATE_PRESETS[key] ?? {}), template: key };
+    for (const anim of [0, 0.5, 1]) t.draw(ctx, 0, 0, 1920, 1080, fields, { time: 1234, anim, elapsed: 65000 });
+  }
+  for (const key of Object.keys(TEMPLATE_PRESETS)) assert.ok(TITLE_TEMPLATES[key], `preset for unknown template ${key}`);
+});

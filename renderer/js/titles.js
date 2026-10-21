@@ -1,24 +1,5 @@
-import { hexToRgba } from './util.js';
-
-const font = (weight, px) => `${weight} ${Math.round(px)}px "Segoe UI", system-ui, sans-serif`;
-const easeOut = (p) => 1 - (1 - p) ** 3;
-
-function measure(ctx, text, f) {
-  ctx.font = f;
-  return text ? ctx.measureText(String(text)).width : 0;
-}
-
-function panel(ctx, t) {
-  return hexToRgba(t.bgColor, t.bgOpacity);
-}
-
-function mmss(seconds) {
-  const s = Math.max(0, Math.ceil(seconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor(s / 60) % 60;
-  const p = (n) => String(n).padStart(2, '0');
-  return h ? `${h}:${p(m)}:${p(s % 60)}` : `${p(m)}:${p(s % 60)}`;
-}
+import { easeOut, font, measure, mmss, panel, wrap } from './title-kit.js';
+import { TITLE_STYLES, STYLE_PRESETS } from './title-styles.js';
 
 /**
  * Title templates draw on a transparent layer (unless `opaque`).
@@ -374,29 +355,6 @@ export const TITLE_TEMPLATES = {
   },
 };
 
-/** Splits text into at most `maxLines` lines that fit `width` (adds … if cut). */
-function wrap(ctx, text, width, maxLines) {
-  const words = String(text).split(/\s+/);
-  const lines = [];
-  let line = '';
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (ctx.measureText(test).width <= width || !line) line = test;
-    else {
-      lines.push(line);
-      line = word;
-      if (lines.length === maxLines) break;
-    }
-  }
-  if (lines.length < maxLines && line) lines.push(line);
-  else if (line && lines.length === maxLines) {
-    let last = lines[maxLines - 1];
-    while (last && ctx.measureText(`${last}…`).width > width) last = last.slice(0, -1);
-    lines[maxLines - 1] = `${last}…`;
-  }
-  return lines;
-}
-
 const PLATFORM_COLORS = { twitch: '#9146ff', youtube: '#ff0033' };
 
 TITLE_TEMPLATES.comment = {
@@ -444,6 +402,9 @@ TITLE_TEMPLATES.comment = {
   },
 };
 
+// The other styles (news, glass, neon, pop…) live in title-styles.js.
+Object.assign(TITLE_TEMPLATES, TITLE_STYLES);
+
 export const FIELD_LABELS = {
   title: 'Texto principal',
   subtitle: 'Texto secundario',
@@ -473,6 +434,7 @@ export const DEFAULT_TITLE = {
 
 /** Sensible starting text when a template is picked in the editor. */
 export const TEMPLATE_PRESETS = {
+  ...STYLE_PRESETS,
   ticker: { title: 'Última hora: escribe aquí el texto que se desplaza por la parte inferior', subtitle: 'ÚLTIMA HORA' },
   social: { title: '@micanal', subtitle: 'YouTube' },
   clock: { title: '' },

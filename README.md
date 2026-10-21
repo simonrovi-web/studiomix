@@ -53,9 +53,12 @@ de 3 s que se puede cancelar.
   guías, modos de fusión, bloqueo y visibilidad.
 
 **Gráficos**
-- Rótulo inferior y moderno, título centrado, mosca, ticker, redes sociales,
-  marcador deportivo con cronómetro, reloj, cuenta atrás, pantalla de espera y
-  comentario del chat.
+- 20 plantillas animadas: rótulo inferior y moderno, título centrado, mosca,
+  ticker, redes sociales, marcador deportivo con cronómetro, reloj, cuenta
+  atrás, pantalla de espera, comentario del chat, noticiero (barra con hora),
+  cristal minimalista, neón, pop inclinado, elegante (eventos), cita destacada,
+  entrevista (dos nombres), llamada a la acción («Suscríbete» con campanita) y
+  etiqueta superior «EN DIRECTO». Cada una trae sus colores y textos de ejemplo.
 - **Listas de rótulos:** pega o carga un CSV (`Nombre | Cargo` por línea) y pasa
   de uno a otro con ◀ ▶▶ en la tarjeta, por MIDI o por la API.
 
