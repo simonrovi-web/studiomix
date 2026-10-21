@@ -27,6 +27,7 @@ const system = require('./main/system');
 const updates = require('./main/updates');
 const screens = require('./main/screens');
 const stingers = require('./main/stingers');
+const gpu = require('./main/gpu');
 const { RemoteServer, lanAddresses } = require('./main/remote');
 const { GuestServer } = require('./main/guests');
 
@@ -312,6 +313,7 @@ app.on('before-quit', (event) => {
 
 app.on('will-quit', () => {
   netinputs.stopAllNetInputs();
+  gpu.monitor.stop();
   // A clean exit removes the lock, so the autosave isn't offered as a recovery.
   projects.endSessionLock();
   log.info('Cierre normal');

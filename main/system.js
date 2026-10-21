@@ -5,6 +5,7 @@
 const { app, net } = require('electron');
 const os = require('node:os');
 const crypto = require('node:crypto');
+const gpu = require('./gpu');
 
 /** Busy share (0–100) of the CPU time between two `os.cpus()` samples. */
 function cpuPercent(prev, now) {
@@ -31,6 +32,7 @@ function appMetrics() {
     appCpu: metrics.reduce((sum, m) => sum + (m.cpu?.percentCPUUsage ?? 0), 0) / cores,
     memoryMb: metrics.reduce((sum, m) => sum + (m.memory?.workingSetSize ?? 0), 0) / 1024,
     systemCpu,
+    gpu: gpu.monitor.current(),
   };
 }
 

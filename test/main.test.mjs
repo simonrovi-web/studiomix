@@ -99,3 +99,33 @@ test('Tailscale addresses (100.64.0.0/10) are told apart from the local network'
   for (const ip of ['100.64.0.1', '100.101.5.9', '100.127.255.254']) assert.ok(isTailscaleIp(ip), ip);
   for (const ip of ['100.63.255.255', '100.128.0.1', '192.168.1.7', '10.0.0.5']) assert.ok(!isTailscaleIp(ip), ip);
 });
+
+test('GPU: nvidia-smi lines, including fields the card does not report', () => {
+  const { parseNvidiaLine } = require('../main/gpu.js');
+  assert.deepEqual(parseNvidiaLine('0, NVIDIA GeForce RTX 3060 Ti, 36, 12, 0, 815, 8192, 36'), {
+    index: 0, name: 'NVIDIA GeForce RTX 3060 Ti', util: 36, encoder: 12, decoder: 0, memUsedMb: 815, memTotalMb: 8192, temp: 36,
+  });
+  assert.equal(parseNvidiaLine('1, Tesla T4, 5, [N/A], [N/A], 100, 15360, [N/A]').encoder, null);
+  assert.equal(parseNvidiaLine('NVIDIA-SMI has failed'), null);
+  assert.equal(parseNvidiaLine(''), null);
+});
+
+test('GPU: Windows engine counters add processes per engine, then take the busiest engine per type', () => {
+  const { aggregateCounters } = require('../main/gpu.js');
+  // Same shape as the real paths Get-Counter returns (\\host\gpu engine(...)\utilization percentage).
+  const engine = (pid, eng, type, v) => ({ p: String.raw`\\nova\gpu engine(pid_${pid}_luid_0x00000000_0x00010162_phys_0_eng_${eng}_engtype_${type})\utilization percentage`, v });
+  const r = aggregateCounters([
+    engine(100, 0, '3d', 30),
+    engine(200, 0, '3d', 25.5), // same 3D engine, another process → 55.5
+    engine(100, 1, '3d', 10), // a second 3D engine, less busy
+    engine(100, 7, 'videoencode', 40),
+    engine(300, 8, 'videodecode', 12),
+    engine(100, 4, 'copy', 90), // copy engines don't count as "GPU use"
+    { p: String.raw`\\nova\gpu adapter memory(luid_0x00000000_0x00010162_phys_0)\dedicated usage`, v: 1073741824 },
+  ]);
+  assert.equal(r.util, 55.5);
+  assert.equal(r.encoder, 40);
+  assert.equal(r.decoder, 12);
+  assert.equal(r.memUsedMb, 1024);
+  assert.deepEqual(aggregateCounters([]), { util: 0, encoder: 0, decoder: 0, memUsedMb: null, memTotalMb: null, temp: null });
+});

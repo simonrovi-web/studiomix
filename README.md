@@ -130,7 +130,13 @@ de 3 s que se puede cancelar.
 **Fiabilidad**
 - Autoguardado cada pocos segundos; si la app se cierra de golpe, al reabrirla
   ofrece recuperar el montaje.
-- Gráficas de rendimiento en vivo (FPS, render, CPU, bitrate, nivel, memoria).
+- Gráficas de rendimiento en vivo (FPS, render, CPU, GPU y su codificador de
+  vídeo, memoria de vídeo, bitrate, nivel, memoria).
+- **Rendimiento de la GPU:** indicador «GPU %» en la barra superior con uso,
+  codificador (NVENC, Quick Sync o AMF), decodificador, memoria de vídeo y
+  temperatura. En tarjetas NVIDIA se lee con `nvidia-smi`; en AMD e Intel, con
+  los contadores de GPU de Windows (los del Administrador de tareas). Avisa si
+  StudioMix no está usando la tarjeta gráfica para dibujar.
 - La ventana sigue renderizando aunque esté tapada o minimizada.
 
 ## Actualizaciones automáticas
