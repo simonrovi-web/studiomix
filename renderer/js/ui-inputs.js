@@ -243,6 +243,35 @@ export const adders = {
     await app.actions.openGuests?.();
   },
 
+  async web() {
+    const dlg = $('#dlg-web');
+    const form = dlg.querySelector('form');
+    const fileName = (p) => p.split(/[\\/]/).pop().replace(/\.html?$/i, '');
+    const pick = async (field, rename) => {
+      const [file] = await window.studio.openMedia('web');
+      if (!file) return;
+      form[field].value = file.path;
+      if (rename) form.name.value = fileName(file.path);
+    };
+    $('#btn-web-file').onclick = () => pick('url', true);
+    $('#btn-web-panel').onclick = () => pick('panel', false);
+    if ((await ask(dlg)) !== 'ok') return;
+    const url = form.url.value.trim();
+    if (!url) return toast('Escribe la dirección de la página o elige un archivo .html.', 'error');
+    const { WebInput } = await import('./webinput.js');
+    app.actions.addInput(
+      new WebInput({
+        url,
+        name: form.name.value.trim() || 'Página web',
+        width: Number(form.width.value) || 1920,
+        height: Number(form.height.value) || 1080,
+        fps: Number(form.fps.value) || 30,
+        panelUrl: form.panel.value.trim(),
+        reloadOnShow: form.reloadOnShow.checked,
+      }),
+    );
+  },
+
   async camera() {
     const dlg = $('#dlg-camera');
     const form = dlg.querySelector('form');
@@ -475,7 +504,7 @@ export async function editInput(input) {
   form.fit.value = input.fit;
   fillSelect(form.layout, Object.entries(LAYOUTS).map(([k, l]) => [k, l.label]), input.layout);
   const hasLoop = 'loop' in input;
-  const videoFx = ['camera', 'video', 'image', 'screen', 'network', 'guest'].includes(input.type);
+  const videoFx = ['camera', 'video', 'image', 'screen', 'network', 'guest', 'web'].includes(input.type);
   $('[data-only=loop]', dlg).hidden = !hasLoop;
   $('[data-only=title]', dlg).hidden = input.type !== 'title';
   $$('[data-only=video-fx]', dlg).forEach((el) => {

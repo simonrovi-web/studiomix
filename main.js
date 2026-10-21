@@ -22,6 +22,7 @@ const ffmpeg = require('./main/ffmpeg');
 const media = require('./main/media');
 const outputs = require('./main/outputs');
 const netinputs = require('./main/netinputs');
+const webinputs = require('./main/webinputs');
 const projects = require('./main/session');
 const system = require('./main/system');
 const updates = require('./main/updates');
@@ -203,6 +204,13 @@ function registerIpc() {
   ipcMain.handle('netinput:start', (_event, id, url) => netinputs.startNetInput(String(id), String(url)));
   ipcMain.handle('netinput:stop', (_event, id) => netinputs.stopNetInput(String(id)));
 
+  // --- web page inputs ---
+  ipcMain.handle('webinput:start', (_event, id, url, opts) => webinputs.startWebInput(String(id), String(url), opts || {}));
+  ipcMain.handle('webinput:stop', (_event, id) => webinputs.stopWebInput(String(id)));
+  ipcMain.handle('webinput:reload', (_event, id) => webinputs.reloadWebInput(String(id)));
+  ipcMain.handle('webinput:open', (_event, id, kind, url) => webinputs.openWebWindow(String(id), kind === 'panel' ? 'panel' : 'page', url));
+  ipcMain.on('webinput:ack', (_event, id) => webinputs.ackFrame(String(id)));
+
   // --- guests and remote control ---
   ipcMain.handle('guests:info', () => guests.info());
   ipcMain.handle('guests:enable', (_event, enabled, opts) => guests.setEnabled(!!enabled, opts || {}));
@@ -242,11 +250,12 @@ function createWindow() {
   win.webContents.on('did-create-window', screens.adopt);
   // Output windows belong to the main window; they must not keep the app open.
   win.on('close', screens.closeAll);
-  // Network inputs belong to the page that created them: if it reloads or
-  // crashes, stop their FFmpeg receivers so the ports are freed.
+  // Network and web inputs belong to the page that created them: if it reloads
+  // or crashes, stop their FFmpeg receivers (freeing the ports) and hidden pages.
   win.webContents.on('did-start-navigation', (details) => {
     if (details.isMainFrame && !details.isSameDocument) {
       netinputs.stopAllNetInputs();
+      webinputs.stopAllWebInputs();
       // Their video comes from this page; the new page reopens the remembered ones.
       screens.closeAll();
     }
@@ -254,6 +263,7 @@ function createWindow() {
   win.webContents.on('render-process-gone', (_event, details) => {
     log.error('El proceso de la interfaz se cerró:', details.reason, `(código ${details.exitCode})`);
     netinputs.stopAllNetInputs();
+    webinputs.stopAllWebInputs();
   });
   win.loadURL(`${media.APP_ORIGIN}/index.html`);
   win.on('closed', () => {
@@ -315,6 +325,7 @@ app.on('before-quit', (event) => {
 
 app.on('will-quit', () => {
   netinputs.stopAllNetInputs();
+  webinputs.stopAllWebInputs();
   gpu.monitor.stop();
   // A clean exit removes the lock, so the autosave isn't offered as a recovery.
   projects.endSessionLock();

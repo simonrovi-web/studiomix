@@ -621,6 +621,7 @@ export const INPUT_ICONS = {
   scene: '▦',
   network: '🌐',
   guest: '👤',
+  web: '🌍',
 };
 
 export const INPUT_TYPE_LABELS = {
@@ -635,4 +636,5 @@ export const INPUT_TYPE_LABELS = {
   scene: 'Escena',
   network: 'Red',
   guest: 'Invitado',
+  web: 'Página web',
 };

@@ -189,6 +189,7 @@ export class Compositor {
   cut() {
     const s = this.state;
     if (s.previewId == null || s.previewId === s.programId) return;
+    this.byId(s.previewId)?.onShow?.();
     this.commit();
   }
 
@@ -198,6 +199,7 @@ export class Compositor {
     if (t.running || s.previewId == null || s.previewId === s.programId) return;
     t.running = true;
     t.startedAt = performance.now();
+    this.byId(s.previewId)?.onShow?.();
     t.from = t.manual / 100;
     t.activeDuration = t.duration;
     // Stinger: the cut happens at the clip's transition point; the clip keeps playing over the new shot.
@@ -236,6 +238,8 @@ export class Compositor {
       if (ov.inputId !== inputId) ov.alpha = 0;
       ov.inputId = inputId;
       ov.target = 1;
+      // Web graphics replay their entry animation each time they go on air.
+      this.byId(inputId)?.onShow?.();
     }
   }
 

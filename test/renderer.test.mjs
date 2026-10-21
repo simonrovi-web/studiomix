@@ -75,3 +75,14 @@ test('every title template draws at the start, middle and end of its entry witho
   }
   for (const key of Object.keys(TEMPLATE_PRESETS)) assert.ok(TITLE_TEMPLATES[key], `preset for unknown template ${key}`);
 });
+
+test('web input pixels: premultiplied BGRA becomes straight RGBA, padded rows are packed', async () => {
+  const { bgraToRgba, packRows } = await import('../renderer/js/pixels.js');
+  // opaque blue-ish, fully transparent, 50% red (premultiplied: R=128 of 255)
+  const px = new Uint8ClampedArray([200, 100, 50, 255, 9, 9, 9, 0, 0, 0, 128, 128]);
+  assert.deepEqual([...bgraToRgba(px)], [50, 100, 200, 255, 0, 0, 0, 0, 255, 0, 0, 128]);
+  const padded = new Uint8ClampedArray([1, 2, 3, 4, 0, 0, 0, 0, 5, 6, 7, 8, 0, 0, 0, 0]); // 1×2 with 4 bytes of padding per row
+  assert.deepEqual([...packRows(padded, 1, 2)], [1, 2, 3, 4, 5, 6, 7, 8]);
+  const tight = new Uint8ClampedArray(8);
+  assert.equal(packRows(tight, 2, 1), tight);
+});

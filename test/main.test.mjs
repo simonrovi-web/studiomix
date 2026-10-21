@@ -140,3 +140,28 @@ test('updates: versions compare by number, and release notes become plain text',
   assert.equal(plainNotes([{ note: 'A' }, { note: 'B' }]), 'A\nB');
   assert.equal(plainNotes(null), '');
 });
+
+test('web inputs: typed addresses and paths become safe page URLs', () => {
+  const { normalizeWebUrl } = require('../main/webinputs.js');
+  assert.equal(normalizeWebUrl(' https://ejemplo.com/gc.html?nombre=Ana '), 'https://ejemplo.com/gc.html?nombre=Ana');
+  assert.equal(normalizeWebUrl('C:\\Graficos\\gc.html?nombre=Ana%20L'), 'file:///C:/Graficos/gc.html?nombre=Ana%20L');
+  assert.equal(normalizeWebUrl('C:\\Mis gráficos\\gc.htm'), 'file:///C:/Mis%20gr%C3%A1ficos/gc.htm');
+  assert.throws(() => normalizeWebUrl(''), /Escribe/);
+  assert.throws(() => normalizeWebUrl('javascript:alert(1)'), /http/);
+  assert.throws(() => normalizeWebUrl('app://studiomix/index.html'), /http/);
+  assert.throws(() => normalizeWebUrl('C:\\Windows\\win.ini'), /\.html/);
+  assert.throws(() => normalizeWebUrl('no es una url'), /no es válida/);
+});
+
+test('web inputs: pages stay on their site, and paint rectangles merge and clamp', () => {
+  const { sameSite, unionRect, clampRect } = require('../main/webinputs.js');
+  assert.equal(sameSite('https://a.com/x.html', 'https://a.com/y.html?z=1'), true);
+  assert.equal(sameSite('https://a.com/x.html', 'https://b.com/'), false);
+  assert.equal(sameSite('file:///C:/g/gc.html', 'file:///C:/g/sub/control.html'), true);
+  assert.equal(sameSite('file:///C:/g/gc.html', 'file:///C:/otra/x.html'), false);
+  assert.equal(sameSite('file:///C:/g/gc.html', 'https://a.com/'), false);
+  assert.deepEqual(unionRect(null, { x: 5, y: 5, width: 10, height: 10 }), { x: 5, y: 5, width: 10, height: 10 });
+  assert.deepEqual(unionRect({ x: 0, y: 0, width: 10, height: 10 }, { x: 20, y: 5, width: 10, height: 20 }), { x: 0, y: 0, width: 30, height: 25 });
+  assert.deepEqual(clampRect({ x: -5, y: 1070, width: 30, height: 40 }, { width: 1920, height: 1080 }), { x: 0, y: 1070, width: 25, height: 10 });
+  assert.equal(clampRect({ x: 2000, y: 0, width: 10, height: 10 }, { width: 1920, height: 1080 }), null);
+});

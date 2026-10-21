@@ -130,6 +130,7 @@
         <button data-add="guest">👤 Invitado remoto</button>
         <button data-add="color">■ Color o degradado</button>
         <button data-add="title">T Título / gráfico</button>
+        <button data-add="web">🌍 Página web (HTML)</button>
       </div>
     </div>
   </section>
@@ -486,6 +487,27 @@
   </dialog>
 
   <!-- Entrada de red -->
+  <dialog id="dlg-web">
+    <form method="dialog">
+      <h2>Página web (HTML)</h2>
+      <p class="muted small">Gráficos HTML con fondo transparente, como la fuente de navegador de OBS: rótulos, marcadores, contadores, alertas…</p>
+      <label class="field">Dirección o archivo
+        <span class="row nowrap"><input name="url" placeholder="https://… o C:\gráficos\rotulo.html?nombre=Ana" required><button type="button" id="btn-web-file">Elegir…</button></span>
+      </label>
+      <div class="row nowrap">
+        <label class="field">Ancho <input name="width" type="number" value="1920" min="160" max="3840"></label>
+        <label class="field">Alto <input name="height" type="number" value="1080" min="90" max="2160"></label>
+        <label class="field">Fotogramas/s <select name="fps"><option value="30" selected>30</option><option value="60">60</option><option value="15">15</option></select></label>
+      </div>
+      <label class="field check"><input name="reloadOnShow" type="checkbox" checked> Repetir su animación cada vez que sale al aire</label>
+      <label class="field">Panel de control (opcional)
+        <span class="row nowrap"><input name="panel" placeholder="https://…/control.html"><button type="button" id="btn-web-panel">Elegir…</button></span>
+      </label>
+      <label class="field">Nombre <input name="name" value="Página web"></label>
+      <menu><button value="cancel" formnovalidate>Cancelar</button><button value="ok" class="accent">Añadir</button></menu>
+    </form>
+  </dialog>
+
   <dialog id="dlg-network">
     <form method="dialog">
       <h2>Entrada de red</h2>

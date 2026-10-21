@@ -46,6 +46,7 @@ const MEDIA_FILTERS = {
   image: [{ name: 'Imagen', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'] }],
   audio: [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'] }],
   logo: [{ name: 'Logo (PNG, WebP o SVG con transparencia)', extensions: ['png', 'webp', 'svg', 'gif', 'jpg', 'jpeg'] }],
+  web: [{ name: 'Página web (HTML)', extensions: ['html', 'htm'] }],
   stinger: [
     { name: 'Stinger (vídeo con alfa o animación HTML)', extensions: ['webm', 'mov', 'mp4', 'm4v', 'mkv', 'avi', 'html', 'htm'] },
   ],

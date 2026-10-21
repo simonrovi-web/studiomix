@@ -30,6 +30,15 @@ contextBridge.exposeInMainWorld('studio', {
   startNetInput:(id, url) => ipcRenderer.invoke('netinput:start', id, url),
   stopNetInput: (id) => ipcRenderer.invoke('netinput:stop', id),
   lanAddresses: () => ipcRenderer.invoke('net:lan-addresses'),
+  startWebInput: (id, url, opts) => ipcRenderer.invoke('webinput:start', id, url, opts),
+  stopWebInput: (id) => ipcRenderer.invoke('webinput:stop', id),
+  reloadWebInput: (id) => ipcRenderer.invoke('webinput:reload', id),
+  openWebWindow: (id, kind, url) => ipcRenderer.invoke('webinput:open', id, kind, url),
+  ackWebInput: (id) => ipcRenderer.send('webinput:ack', id),
+  onWebInput: (onFrame, onStatus) => {
+    ipcRenderer.on('webinput:frame', (_event, id, rect, pixels) => onFrame(id, rect, pixels));
+    ipcRenderer.on('webinput:status', (_event, s) => onStatus(s));
+  },
   onNetInput: (onData, onStatus) => {
     const data = (_event, id, chunk) => onData(id, chunk);
     const status = (_event, s) => onStatus(s);

@@ -38,8 +38,15 @@ de 3 s que se puede cancelar.
 
 **Producción**
 - Entradas: cámara, micrófono, vídeo, imagen, audio, pantalla o ventana, color
-  o degradado, títulos, escenas, **red** (SRT, RTSP, RTMP, UDP, HLS) e
-  **invitados remotos**.
+  o degradado, títulos, escenas, **red** (SRT, RTSP, RTMP, UDP, HLS),
+  **invitados remotos** y **páginas web (HTML)**.
+- **Páginas web con transparencia**, como la fuente de navegador de OBS:
+  rótulos, marcadores, contadores o alertas hechos en HTML, desde un archivo
+  `.html` (con `?parámetros`) o una dirección http(s). Se dibujan en una
+  ventana invisible y solo se envía lo que cambia; pueden repetir su animación
+  cada vez que salen al aire, abrirse en una ventana para hacer clic en ellas y
+  tener un panel de control propio. Todas comparten almacenamiento, así que un
+  panel que guarda en `localStorage` controla el gráfico que está al aire.
 - Preview/Program con Cut, Auto, T-bar y transiciones: fundido, fundido a negro,
   cortinilla, deslizar, zoom, iris, luma wipe (13 patrones) y stinger.
 - **Stingers con transparencia:** WebM con alfa, **MOV con alfa** (ProRes 4444,

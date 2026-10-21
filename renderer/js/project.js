@@ -59,6 +59,19 @@ async function createInput(data, media) {
       const { NetworkInput } = await import('./netinput.js');
       return new NetworkInput({ url: data.url, name: data.name, listenPort: data.listenPort ?? null });
     }
+    case 'web': {
+      if (!data.url) return null;
+      const { WebInput } = await import('./webinput.js');
+      return new WebInput({
+        url: data.url,
+        name: data.name,
+        width: data.width,
+        height: data.height,
+        fps: data.fps,
+        panelUrl: data.panelUrl ?? '',
+        reloadOnShow: data.reloadOnShow ?? true,
+      });
+    }
     default:
       return null; // screens must be picked again
   }
