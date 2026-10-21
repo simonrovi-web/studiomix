@@ -129,3 +129,14 @@ test('GPU: Windows engine counters add processes per engine, then take the busie
   assert.equal(r.memUsedMb, 1024);
   assert.deepEqual(aggregateCounters([]), { util: 0, encoder: 0, decoder: 0, memUsedMb: null, memTotalMb: null, temp: null });
 });
+
+test('updates: versions compare by number, and release notes become plain text', () => {
+  const { compareVersions, plainNotes } = require('../main/updates.js');
+  assert.equal(compareVersions('0.3.10', '0.3.9'), 1);
+  assert.equal(compareVersions('v0.3.3', '0.3.3'), 0);
+  assert.equal(compareVersions('0.3.3', '0.4.0'), -1);
+  assert.equal(compareVersions('1.0', '1.0.0'), 0);
+  assert.equal(plainNotes('<h2>Novedades</h2><ul><li>Uno &amp; dos</li><li><b>Tres</b></li></ul><script>alert(1)</script>'), 'Novedades\n• Uno & dos\n• Tres\nalert(1)');
+  assert.equal(plainNotes([{ note: 'A' }, { note: 'B' }]), 'A\nB');
+  assert.equal(plainNotes(null), '');
+});

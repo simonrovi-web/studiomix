@@ -227,6 +227,11 @@ function initKeyboard() {
       return;
     }
     if (e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key === '?') {
+      e.preventDefault();
+      ask($('#dlg-help'));
+      return;
+    }
     if (digit) {
       const input = state.inputs[Number(digit) - 1];
       if (input) (e.shiftKey ? actions.cutTo : actions.setPreview)(input.id);

@@ -151,6 +151,12 @@ puede usarse un servidor propio: indica la carpeta en
 (o en `STUDIOMIX_UPDATE_URL`). La actualización se descarga en
 segundo plano y se instala al cerrar; nunca reinicia la app en mitad de un directo.
 
+También puedes comprobarlo cuando quieras en **☰ → Buscar actualizaciones…**:
+muestra tu versión, si hay una nueva, el progreso de la descarga, las novedades
+y el botón «Reiniciar e instalar» (desactivado mientras emites o grabas). Cuando
+hay una versión lista, el botón ☰ lleva un punto azul. En la versión portable,
+que no se actualiza sola, ofrece descargar la nueva desde GitHub.
+
 ## Atajos
 
 | Tecla | Acción |

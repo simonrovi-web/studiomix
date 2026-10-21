@@ -126,6 +126,8 @@ function registerIpc() {
   ipcMain.handle('app:metrics', () => system.appMetrics());
   // Restart into a downloaded update, but never while anything is being sent or recorded.
   ipcMain.handle('app:install-update', () => updates.installUpdate(outputs.outputs.size > 0));
+  ipcMain.handle('app:update-status', () => updates.getStatus());
+  ipcMain.handle('app:check-updates', () => updates.checkNow());
   ipcMain.on('log:renderer', (_event, level, message) => {
     const text = String(message).slice(0, 4000);
     if (level === 'error') rendererLog.error(text);

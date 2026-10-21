@@ -24,6 +24,8 @@ import { initControls } from './ui-controls.js';
 import { initOutputs, renderOutputs } from './ui-outputs.js';
 import { initAutosave, openProject, saveProject } from './ui-projects.js';
 import { initScreens, openScreens } from './ui-screens.js';
+import { hasUpdate, initUpdates, openUpdates, updateSummary } from './ui-updates.js';
+import { openSettings } from './ui-outputs.js';
 import { $ } from './util.js';
 
 // --- services -------------------------------------------------------------------
@@ -89,20 +91,25 @@ $('#btn-replay-save').addEventListener('click', actions.saveReplay);
 // Less frequent actions grouped in one menu (fewer choices in the bar, Hick's law).
 $('#btn-menu').addEventListener('click', (e) => {
   const r = e.currentTarget.getBoundingClientRect();
-  showMenu(r.right - 240, r.bottom + 4, [
-    ['Abrir proyecto…', openProject, { hint: 'Ctrl+O' }],
-    ['Guardar proyecto', () => saveProject(false), { hint: 'Ctrl+S' }],
-    ['Guardar como…', () => saveProject(true), { hint: 'Ctrl+Mayús+S' }],
-    null,
-    ['Captura de Program', actions.snapshot, { hint: 'S' }],
-    ['Abrir carpeta de grabaciones', () => window.studio.openFolder(state.settings.recordFolder || null)],
-    null,
-    ['Salidas a pantallas y monitor en el móvil…', openScreens],
-    ['Controlador MIDI…', openMidiDialog],
-    ['Mando remoto y Stream Deck…', () => actions.openRemote?.()],
-    ['Invitados remotos…', () => actions.openGuests?.()],
-    ['Atajos de teclado', () => ask($('#dlg-help'))],
-  ]);
+  showMenu(r.right - 300, r.bottom + 4, [
+    { header: 'Proyecto' },
+    ['Abrir proyecto…', openProject, { icon: '📂', hint: 'Ctrl+O' }],
+    ['Guardar proyecto', () => saveProject(false), { icon: '💾', hint: 'Ctrl+S' }],
+    ['Guardar como…', () => saveProject(true), { icon: '📄', hint: 'Ctrl+Mayús+S' }],
+    { header: 'Directo' },
+    ['Captura de Program', actions.snapshot, { icon: '📷', hint: 'S' }],
+    ['Abrir carpeta de grabaciones', () => window.studio.openFolder(state.settings.recordFolder || null), { icon: '📁' }],
+    ['Salidas a pantallas y móvil…', openScreens, { icon: '🖥' }],
+    { header: 'Conexiones' },
+    ['Invitados remotos…', () => actions.openGuests?.(), { icon: '👤' }],
+    ['Mando remoto y Stream Deck…', () => actions.openRemote?.(), { icon: '📱' }],
+    ['Controlador MIDI…', openMidiDialog, { icon: '🎹' }],
+    { header: 'Aplicación' },
+    ['Ajustes…', openSettings, { icon: '⚙' }],
+    ['Buscar actualizaciones…', openUpdates, { icon: '⟳', badge: hasUpdate() ? 'Nueva' : null }],
+    ['Atajos de teclado', () => ask($('#dlg-help')), { icon: '⌨', hint: '?' }],
+    { footer: updateSummary() },
+  ], { className: 'main-menu' });
 });
 // The button opens the go-live sheet (destinations + pre-flight); while live it stops.
 $('#btn-stream').addEventListener('click', () => (outputs.get('stream') ? actions.toggleOutput('stream') : openGoLive()));
@@ -118,16 +125,7 @@ window.studio.onOptimizeProgress(({ file, progress }) => {
     if (input.optimizing != null && (input.originalPath ?? input.path) === file) input.optimizing = progress;
   }
 });
-window.studio.onUpdateReady(({ version }) => {
-  toast(`StudioMix ${version} está descargado y se instalará al cerrar la aplicación.`, 'info', {
-    label: 'Reiniciar ahora',
-    dismissLabel: 'Al cerrar',
-    onClick: async () => {
-      const result = await window.studio.installUpdate();
-      if (!result.ok) toast(result.error, 'error');
-    },
-  });
-});
+initUpdates();
 
 changed();
 
