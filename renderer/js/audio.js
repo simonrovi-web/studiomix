@@ -237,6 +237,11 @@ export class AudioEngine {
   constructor() {
     const ctx = new AudioContext({ sampleRate: 48000, latencyHint: 'interactive' });
     this.ctx = ctx;
+    // Nothing here suspends the mix on purpose; the system can (a sound card
+    // unplugged or changed). Stream and recording stall without audio, so restart it.
+    ctx.addEventListener('statechange', () => {
+      if (ctx.state === 'suspended') this.resume();
+    });
     // Unity-gain sum of all channels, before the master fader. Mix-minus feeds
     // for guests subtract a channel from this exact signal.
     this.sum = ctx.createGain();
@@ -255,11 +260,18 @@ export class AudioEngine {
     this.monitor.gain.value = 0;
     // Per-channel monitoring (like OBS "monitor only" / "monitor and output") goes straight to the speakers.
     this.monitorBus = ctx.createGain();
-    this.monitorBus.connect(ctx.destination);
+    // Everything heard locally meets here; it plays on the context's own
+    // output or, for another sound card, through an <audio> element.
+    this.listen = ctx.createGain();
+    this.listen.connect(ctx.destination);
+    this.monitorBus.connect(this.listen);
+    this.listenDevice = '';
+    this.listenEl = null;
+    this.listenStream = null;
     this.fade.connect(this.meter.input);
     this.fade.connect(this.dest);
     this.fade.connect(this.monitor);
-    this.monitor.connect(ctx.destination);
+    this.monitor.connect(this.listen);
     this.volume = 100;
     this.muted = false;
     this.monitoring = false;
@@ -306,12 +318,29 @@ export class AudioEngine {
 
   /**
    * Sends monitoring (headphones, per-channel monitor) to another sound card.
-   * The stream and recordings are unaffected: they take the mix from `dest`.
+   * The context itself never changes device: it clocks the stream and
+   * recording audio, which must not stall or move with the headphones (a
+   * sink change can leave it suspended, and an unplugged card would stop it).
    */
   async setOutputDevice(deviceId = '') {
-    if (typeof this.ctx.setSinkId !== 'function') throw new Error('Este equipo no permite elegir la salida de audio.');
-    if (this.ctx.sinkId === deviceId) return;
-    await this.ctx.setSinkId(deviceId);
+    if (deviceId === this.listenDevice) return;
+    if (!deviceId) {
+      this.listen.disconnect();
+      this.listen.connect(this.ctx.destination);
+      this.listenEl?.pause();
+      this.listenDevice = '';
+      return;
+    }
+    const el = this.listenEl ?? new Audio();
+    if (typeof el.setSinkId !== 'function') throw new Error('Este equipo no permite elegir la salida de audio.');
+    this.listenStream ??= this.ctx.createMediaStreamDestination();
+    el.srcObject = this.listenStream.stream;
+    await el.setSinkId(deviceId);
+    await el.play();
+    this.listenEl = el;
+    this.listen.disconnect();
+    this.listen.connect(this.listenStream);
+    this.listenDevice = deviceId;
   }
 
   setLimiter(on) {
