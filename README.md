@@ -132,6 +132,12 @@ de 3 s que se puede cancelar.
   MIDI…» y mueve o pulsa el control del controlador. Los controles asignados
   llevan una línea morada; desde el mismo menú se cambian o se quitan. En las
   tarjetas, el clic derecho ofrece asignar «a Preview» y «a Program».
+- **Configuración guiada por controlador** (☰ → Controlador MIDI): para el
+  **Samson Conspiracy**, StudioMix pide cada control por orden (crossfader →
+  T-bar, faders → volúmenes y master, pads → entradas a Preview, botones →
+  CUT, AUTO, Negro, capas, grabar y emitir); «Saltar» deja una función sin
+  asignar. Los mensajes se aprenden del propio aparato, así que vale con
+  cualquier preset. Los botones en modo «Toggle» se detectan solos.
 - **T-bar como en un mezclador de hardware:** se queda donde la dejas; cada
   transición va de un extremo al otro (al llegar arriba, la siguiente es
   bajando). Con un fader MIDI ignora el ruido en los extremos, acepta el 99 %

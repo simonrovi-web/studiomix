@@ -1,4 +1,6 @@
 import { CLICK_PREFIX, MIDI_ACTIONS, describeBinding, getAction } from './midi.js';
+import { MIDI_PROFILES } from './midi-profiles.js';
+import { startMidiWizard } from './ui-midi-learn.js';
 import { app } from './store.js';
 import { ask, confirmAction } from './ui-common.js';
 import { $, h } from './util.js';
@@ -64,8 +66,15 @@ export async function openMidiDialog() {
   $('#btn-midi-clear').onclick = async () => {
     if (await confirmAction('¿Borrar todas las asignaciones MIDI?', { ok: 'Borrar todas', danger: true })) app.midi.clearAll();
   };
+  // Guided setup runs with the dialog closed, so the marked controls stay visible.
+  $('#midi-profiles').replaceChildren(
+    h('span', { class: 'muted small' }, 'Configuración guiada:'),
+    ...MIDI_PROFILES.map((p) => h('button', { type: 'submit', value: `wizard:${p.id}` }, `🎹 ${p.name}…`)),
+  );
   renderMidiDialog();
-  await ask(dlg);
+  const result = await ask(dlg);
   open = false;
   app.midi.cancelLearn();
+  const profile = MIDI_PROFILES.find((p) => result === `wizard:${p.id}`);
+  if (profile) startMidiWizard(profile);
 }

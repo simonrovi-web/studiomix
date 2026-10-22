@@ -697,3 +697,4 @@ input[type=range].midi-bound { box-shadow: none; outline: 1px solid rgba(167, 12
 .midi-learn-hint div span { color: var(--muted); }
 .midi-learn-dot { width: 12px; height: 12px; border-radius: 50%; background: #a77bff; flex: none; animation: midi-learn-dot 1s ease-in-out infinite; }
 @keyframes midi-learn-dot { 50% { opacity: 0.3; transform: scale(0.7); } }
+.midi-profiles { gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }

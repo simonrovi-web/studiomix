@@ -199,3 +199,49 @@ test('recording asks for H.264 High at the lowest level that fits', async () => 
   assert.equal(h264HighCodec(3840, 2160, 60), 'avc1.640034'); // 5.2
   assert.equal(h264HighCodec(1280, 720, 30), 'avc1.640028');
 });
+
+test('MIDI toggle buttons work on every press; guided setup ignores the control just used', async () => {
+  const { MidiController } = await import('../renderer/js/midi.js');
+  const fired = [];
+  const midi = new MidiController({ onAction: (id) => fired.push(id), onChange() {} });
+  midi.bindings = {};
+  midi.toggleCheckMs = 20;
+  const wait = () => new Promise((r) => setTimeout(r, 40));
+
+  // Momentary: press then release while learning → only presses fire.
+  midi.learn('cut');
+  midi.handle([0xb0, 20, 127], 'c');
+  midi.handle([0xb0, 20, 0], 'c');
+  await wait();
+  assert.equal(midi.bindings.cut.toggle, undefined);
+  midi.handle([0xb0, 20, 127], 'c');
+  midi.handle([0xb0, 20, 0], 'c');
+  assert.deepEqual(fired, ['cut']);
+
+  // Toggle: 127 on one press, 0 on the next → both are presses.
+  midi.learn('auto');
+  midi.handle([0xb0, 21, 127], 'c');
+  await wait();
+  assert.equal(midi.bindings.auto.toggle, true);
+  midi.handle([0xb0, 21, 0], 'c');
+  midi.handle([0xb0, 21, 127], 'c');
+  assert.deepEqual(fired, ['cut', 'auto', 'auto']);
+
+  // A fader still moving does not answer the next step.
+  midi.learnIgnore.add('cc:0:7');
+  midi.learn('master');
+  midi.handle([0xb0, 7, 90], 'c');
+  assert.equal(midi.learning, 'master');
+  midi.handle([0xb0, 8, 90], 'c');
+  assert.deepEqual(midi.bindings.master, { type: 'cc', channel: 0, number: 8 });
+});
+
+test('Conspiracy profile names only existing MIDI functions, each once', async () => {
+  const { MIDI_PROFILES } = await import('../renderer/js/midi-profiles.js');
+  const { getAction } = await import('../renderer/js/midi.js');
+  for (const profile of MIDI_PROFILES) {
+    const ids = profile.steps.map((s) => s.action);
+    assert.equal(new Set(ids).size, ids.length, profile.id);
+    for (const id of ids) assert.ok(getAction(id), `${profile.id}: ${id}`);
+  }
+});

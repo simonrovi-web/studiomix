@@ -13,6 +13,8 @@ const LEARN_TIMEOUT_MS = 20000;
 let hint = null;
 let learnTimer = 0;
 let learningEl = null;
+// Guided setup in progress: { profile, index, assigned }.
+let wizard = null;
 
 /** The MIDI function a right-clicked element stands for, or null. */
 export function midiTargetFor(target) {
@@ -35,25 +37,28 @@ function stopLearning() {
   learningEl = null;
 }
 
-/** Starts learning for one function and shows what to do. */
-export function learnMidi(id, label, kind, el = null) {
+/**
+ * Starts learning for one function and shows what to do. The guided setup
+ * passes `step` ("3 de 24"), the control to touch, and a Skip button.
+ */
+export function learnMidi(id, label, kind, el = null, guided = null) {
   const midi = app.midi;
   stopLearning();
   midi.learn(id, label);
   learningEl = el;
   el?.classList.add('midi-learning');
-  const noDevice = !midi.inputs.length;
+  const what = guided ? `Toca ${guided.control}…` : kind === 'fader' ? 'Mueve un fader o una perilla del controlador…' : 'Pulsa un botón o un pad del controlador…';
   hint = h('div', { class: 'midi-learn-hint', role: 'status' },
     h('span', { class: 'midi-learn-dot' }),
     h('div', {},
-      h('strong', {}, `Asignar «${label}»`),
-      h('span', {}, noDevice
-        ? 'No hay ningún controlador MIDI conectado. Conéctalo por USB y mueve un control.'
-        : kind === 'fader' ? 'Mueve un fader o una perilla del controlador…' : 'Pulsa un botón o un pad del controlador…'),
+      h('strong', {}, guided ? `${guided.step} · «${label}»` : `Asignar «${label}»`),
+      h('span', {}, midi.inputs.length ? what : 'No hay ningún controlador MIDI conectado. Conéctalo por USB y mueve un control.'),
     ),
-    h('button', { type: 'button', onclick: () => cancel() }, 'Cancelar'),
+    guided ? h('button', { type: 'button', onclick: () => skipStep() }, 'Saltar') : null,
+    h('button', { type: 'button', onclick: () => cancel() }, guided ? 'Terminar' : 'Cancelar'),
   );
   document.body.append(hint);
+  if (guided) return;
   learnTimer = setTimeout(() => {
     cancel();
     toast('No llegó ningún mensaje MIDI. Comprueba que el controlador está conectado.', 'error');
@@ -63,11 +68,55 @@ export function learnMidi(id, label, kind, el = null) {
 function cancel() {
   app.midi.cancelLearn();
   stopLearning();
+  if (wizard) finishWizard();
+}
+
+/** Walks through a controller profile, one function per control touched. */
+export function startMidiWizard(profile) {
+  wizard = { profile, index: 0, assigned: 0 };
+  app.midi.learnIgnore.clear();
+  toast(`Configuración guiada de ${profile.name}: toca cada control cuando se te pida.${profile.note ? `
+${profile.note}` : ''}`);
+  nextStep();
+}
+
+function nextStep() {
+  const step = wizard.profile.steps[wizard.index];
+  if (!step) return finishWizard();
+  const action = getAction(step.action);
+  learnMidi(action.id, action.label, action.kind, document.querySelector(`[data-midi="${action.id}"]`), {
+    step: `Paso ${wizard.index + 1} de ${wizard.profile.steps.length}`,
+    control: step.control,
+  });
+  return undefined;
+}
+
+function skipStep() {
+  wizard.index++;
+  nextStep();
+}
+
+function finishWizard() {
+  const { profile, assigned } = wizard;
+  wizard = null;
+  app.midi.learnIgnore.clear();
+  stopLearning();
+  app.midi.cancelLearn();
+  toast(`${profile.name}: ${assigned} ${assigned === 1 ? 'función asignada' : 'funciones asignadas'}. Puedes cambiar cualquiera con clic derecho.`);
 }
 
 /** Called by the controller when a control was assigned. */
 export function onMidiLearned(id, binding, replaced) {
   stopLearning();
+  if (wizard) {
+    // The rest of a fader move or a button release must not answer the next step.
+    app.midi.learnIgnore.add(`${binding.type}:${binding.channel}:${binding.number}`);
+    wizard.assigned++;
+    wizard.index++;
+    markBound();
+    nextStep();
+    return;
+  }
   const action = getAction(id, app.midi.bindings);
   const lost = replaced.map((r) => getAction(r, app.midi.bindings)?.label ?? r);
   toast(`«${action?.label ?? id}» → ${describeBinding(binding)}${lost.length ? `\n(ese control ya no hace: ${lost.join(', ')})` : ''}`);
@@ -85,7 +134,7 @@ export function onMidiChange() {
   }
   if (!hint) return;
   const midi = app.midi;
-  if (!midi.learning) return stopLearning();
+  if (!midi.learning) return wizard ? undefined : stopLearning();
   if (midi.learnRejected) {
     const line = hint.querySelector('div span');
     if (line) line.textContent = 'Eso es un botón: esta función necesita un fader o una perilla (mensajes CC).';

@@ -59,6 +59,12 @@ export function describeBinding(b) {
   return `${b.type === 'cc' ? 'CC' : 'Nota'} ${b.number} · canal ${b.channel + 1}`;
 }
 
+/**
+ * A CC button that sends no release within this time after being learned is a
+ * toggle button (127 on one press, 0 on the next): every change is a press.
+ */
+const TOGGLE_CHECK_MS = 2000;
+
 export class MidiController {
   /**
    * @param {{ onAction: (id: string, value: number) => void,
@@ -75,6 +81,10 @@ export class MidiController {
     this.ccState = new Map();
     this.ledState = new Map();
     this.bindings = this.load();
+    // Controls the guided setup already used: their trailing messages are not the next answer.
+    this.learnIgnore = new Set();
+    this.toggleCheck = null;
+    this.toggleCheckMs = TOGGLE_CHECK_MS;
   }
 
   load() {
@@ -132,6 +142,22 @@ export class MidiController {
     this.handlers.onChange();
   }
 
+  /** Marks a just-learned CC button as toggle unless its release arrives in time. */
+  checkToggle(id, key, value) {
+    clearTimeout(this.toggleCheck?.timer);
+    const check = { key };
+    check.timer = setTimeout(() => {
+      if (this.toggleCheck !== check) return;
+      this.toggleCheck = null;
+      if (!this.bindings[id]) return;
+      this.bindings[id].toggle = true;
+      this.ccState.set(key, value);
+      this.save();
+      this.handlers.onChange();
+    }, this.toggleCheckMs);
+    this.toggleCheck = check;
+  }
+
   cancelLearn() {
     this.learning = null;
     this.learningLabel = null;
@@ -161,7 +187,15 @@ export class MidiController {
     else return; // note-off, clock, aftertouch…
 
     this.lastMessage = { kind, channel, number, value, device: deviceName };
+    const key = `${kind}:${channel}:${number}`;
 
+    // A button just learned released quickly: momentary, the usual kind.
+    if (this.toggleCheck?.key === key && value < 64) {
+      clearTimeout(this.toggleCheck.timer);
+      this.toggleCheck = null;
+    }
+
+    if (this.learning && this.learnIgnore.has(key)) return;
     if (this.learning) {
       const id = this.learning;
       const action = getAction(id, this.bindings);
@@ -186,6 +220,7 @@ export class MidiController {
       this.learning = null;
       this.learningLabel = null;
       this.learnRejected = null;
+      if (kind === 'cc' && action.kind === 'button') this.checkToggle(id, key, value);
       this.save();
       this.ledState.clear();
       this.handlers.onLearned?.(id, binding, replaced.filter((r) => r !== id));
@@ -202,11 +237,11 @@ export class MidiController {
       } else if (kind === 'note') {
         this.handlers.onAction(id, 1);
       } else {
-        // CC buttons fire on the rising edge only.
-        const key = `${channel}:${number}`;
+        // Momentary CC buttons fire on the rising edge; toggle ones on every change.
         const previous = this.ccState.get(key) ?? 0;
         this.ccState.set(key, value);
-        if (value >= 64 && previous < 64) this.handlers.onAction(id, 1);
+        const edge = b.toggle ? (value >= 64) !== (previous >= 64) : value >= 64 && previous < 64;
+        if (edge) this.handlers.onAction(id, 1);
       }
     }
     this.handlers.onChange();
