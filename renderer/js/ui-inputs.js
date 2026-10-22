@@ -1,4 +1,6 @@
 import { LAYOUTS } from './compositor.js';
+import { INPUT_SLOTS, describeBinding } from './midi.js';
+import { learnMidi } from './ui-midi-learn.js';
 import { DEFAULT_FX, LUT_PRESETS, parseCube } from './effects.js';
 import {
   AudioFileInput,
@@ -89,6 +91,14 @@ function openCardMenu(input, x, y) {
   if (input.hasVideo) {
     items.push(['A Preview', () => app.actions.setPreview(input.id)]);
     items.push(['A Program (corte)', () => app.actions.cutTo(input.id)]);
+    // MIDI addresses inputs by position: "Entrada 3" is the third card.
+    const n = state.inputs.indexOf(input) + 1;
+    if (n >= 1 && n <= INPUT_SLOTS) {
+      for (const [id, label] of [[`preview-${n}`, `Entrada ${n} a Preview`], [`program-${n}`, `Entrada ${n} a Program`]]) {
+        const binding = app.midi.bindings[id];
+        items.push([`MIDI: ${label}${binding ? ` (${describeBinding(binding)})` : '…'}`, () => learnMidi(id, label, 'button'), { icon: '🎹' }]);
+      }
+    }
     items.push(null);
   }
   items.push(['Ajustes y efectos…', () => editInput(input)]);

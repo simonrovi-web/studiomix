@@ -1,4 +1,5 @@
 import { DEFAULT_AUDIO_FX, FADER_MAX, faderToGain, gainToDbLabel, levelToDb } from './audio.js';
+import { CHANNEL_SLOTS } from './midi.js';
 import { app, saveSettings, state } from './store.js';
 import { ask } from './ui-common.js';
 import { $, $$, h } from './util.js';
@@ -37,6 +38,8 @@ function buildStrip({ name, getVolume, setVolume, getMuted, setMuted, extraButto
     el,
     meter,
     nameEl,
+    fader,
+    mute,
     sync() {
       fader.value = getVolume();
       showDb();
@@ -93,7 +96,7 @@ function buildChannelStrip(input) {
 
 export function buildMasterStrip() {
   const audio = app.audio;
-  const mon = h('button', { type: 'button', class: 'mon', title: 'Escuchar la mezcla por los altavoces/auriculares' }, '🎧');
+  const mon = h('button', { type: 'button', id: 'btn-monitor', class: 'mon', title: 'Escuchar la mezcla por los altavoces/auriculares' }, '🎧');
   mon.addEventListener('click', () => {
     audio.monitoring = !audio.monitoring;
     audio.applyMaster();
@@ -114,6 +117,10 @@ export function buildMasterStrip() {
     extraButtons: [mon],
   });
   masterStrip.channel = audio;
+  // Right-click assigns these to MIDI (see ui-midi-learn.js).
+  masterStrip.fader.dataset.midi = 'master';
+  masterStrip.mute.dataset.midi = 'master-mute';
+  mon.dataset.midi = 'monitor';
   $('#master-strip').append(masterStrip.el);
 }
 
@@ -122,12 +129,20 @@ export function dropStrip(input) {
   strips.delete(input.id);
 }
 
+function setMidiTarget(el, id) {
+  if (id) el.dataset.midi = id;
+  else delete el.dataset.midi;
+}
+
 export function updateStrips() {
   const container = $('#mixer-strips');
   const audioInputs = state.inputs.filter((i) => i.channel);
-  const wanted = audioInputs.map((input) => {
+  const wanted = audioInputs.map((input, i) => {
     const strip = strips.get(input.id) ?? buildChannelStrip(input);
     strip.nameEl.textContent = input.name;
+    // MIDI faders and mutes address channels by position (canal 1, 2…).
+    setMidiTarget(strip.fader, i < CHANNEL_SLOTS ? `fader-${i + 1}` : null);
+    setMidiTarget(strip.mute, i < CHANNEL_SLOTS ? `mute-${i + 1}` : null);
     strip.el.classList.toggle('live', input.id === state.programId);
     strip.sync();
     return strip.el;

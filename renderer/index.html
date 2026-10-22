@@ -11,9 +11,9 @@
   <header class="topbar">
     <div class="brand"><span class="logo">●</span> StudioMix</div>
     <div class="segmented" role="tablist" aria-label="Vista">
-      <button id="view-studio" class="on" role="tab" title="Preview y Program (V)">Estudio</button>
-      <button id="view-multiview" role="tab" title="Todas las entradas a la vez (V)">Multiview</button>
-      <button id="view-vertical" role="tab" title="Salida vertical 9:16 para TikTok, Shorts o Reels">Vertical</button>
+      <button id="view-studio" data-midi="view-studio" class="on" role="tab" title="Preview y Program (V)">Estudio</button>
+      <button id="view-multiview" data-midi="view-multiview" role="tab" title="Todas las entradas a la vez (V)">Multiview</button>
+      <button id="view-vertical" data-midi="view-vertical" role="tab" title="Salida vertical 9:16 para TikTok, Shorts o Reels">Vertical</button>
     </div>
     <div class="chips">
       <span class="chip" id="chip-fps" title="Fotogramas por segundo de la salida">— fps</span>
@@ -27,15 +27,15 @@
     <div class="spacer"></div>
     <div class="outputs-bar" aria-label="Salidas">
       <div class="out-group">
-        <button id="btn-record" class="out-btn record" title="Grabar Program en disco"><span class="out-dot"></span><span class="out-label">Grabar</span><span id="record-info" class="out-meta mono"></span></button>
-        <button id="btn-record-pause" class="out-aux" title="Pausar / reanudar la grabación" hidden>⏸</button>
+        <button id="btn-record" data-midi="record" class="out-btn record" title="Grabar Program en disco"><span class="out-dot"></span><span class="out-label">Grabar</span><span id="record-info" class="out-meta mono"></span></button>
+        <button id="btn-record-pause" data-midi="record-pause" class="out-aux" title="Pausar / reanudar la grabación" hidden>⏸</button>
       </div>
       <div class="out-group">
-        <button id="btn-replay" class="out-btn replay" title="Búfer de repetición instantánea"><span class="out-label">Replay</span><span id="replay-info" class="out-meta mono"></span></button>
-        <button id="btn-replay-save" class="out-aux" title="Guardar repetición (R)" disabled>💾</button>
+        <button id="btn-replay" data-midi="replay" class="out-btn replay" title="Búfer de repetición instantánea"><span class="out-label">Replay</span><span id="replay-info" class="out-meta mono"></span></button>
+        <button id="btn-replay-save" data-midi="replay-save" class="out-aux" title="Guardar repetición (R)" disabled>💾</button>
       </div>
       <div class="out-group">
-        <button id="btn-stream" class="out-btn stream" title="Emitir en directo"><span class="out-dot"></span><span class="out-label">Emitir</span><span id="stream-info" class="out-meta mono"></span></button>
+        <button id="btn-stream" data-midi="stream" class="out-btn stream" title="Emitir en directo"><span class="out-dot"></span><span class="out-label">Emitir</span><span id="stream-info" class="out-meta mono"></span></button>
       </div>
     </div>
     <button id="btn-screens" class="ghost icon-btn" title="Salidas a pantallas, proyectores y monitor en el móvil">🖥</button>
@@ -81,16 +81,16 @@
       </select>
       <label class="field">Bitrate de vídeo (kbps) <input id="v-kbps" type="number" min="1000" max="20000" step="100"></label>
       <div class="row nowrap">
-        <button type="button" id="btn-vstream" class="danger">● Emitir vertical</button>
-        <button type="button" id="btn-vrecord">⏺ Grabar vertical</button>
+        <button type="button" id="btn-vstream" data-midi="vstream" class="danger">● Emitir vertical</button>
+        <button type="button" id="btn-vrecord" data-midi="vrecord">⏺ Grabar vertical</button>
       </div>
       <p class="muted small" id="v-info"></p>
     </section>
 
     <section class="transition-panel">
       <div class="cut-auto">
-        <button id="btn-cut" class="big" title="Espacio">CUT</button>
-        <button id="btn-auto" class="big accent" title="Intro">AUTO</button>
+        <button id="btn-cut" data-midi="cut" class="big" title="Espacio">CUT</button>
+        <button id="btn-auto" data-midi="auto" class="big accent" title="Intro">AUTO</button>
       </div>
       <div class="progress"><div id="trans-progress"></div></div>
       <div class="trans-fields">
@@ -101,14 +101,14 @@
           <span class="row nowrap"><input id="trans-duration" type="number" min="100" max="5000" step="100" title="Duración de la transición en milisegundos"><span class="unit">ms</span></span>
         </label>
       </div>
-      <div class="tbar" id="tbar" role="slider" tabindex="0" aria-label="T-bar" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+      <div class="tbar" id="tbar" data-midi="tbar" role="slider" tabindex="0" aria-label="T-bar" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
            title="T-bar: arrástrala para hacer la transición a mano. También con la rueda del ratón o las flechas ↑ ↓.">
         <div class="tbar-scale" aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
         <div class="tbar-track"><div class="tbar-fill"></div><div class="tbar-handle"><i></i><i></i><i></i></div></div>
         <div class="tbar-readout"><b class="tbar-pct">0%</b><span class="tbar-dir">▲</span></div>
       </div>
       <div class="overlay-buttons" id="overlay-buttons"></div>
-      <button id="btn-ftb" class="ftb" title="Fundido a negro de toda la salida, imagen y sonido (B)">■ Negro</button>
+      <button id="btn-ftb" data-midi="ftb" class="ftb" title="Fundido a negro de toda la salida, imagen y sonido (B)">■ Negro</button>
     </section>
 
     <section class="monitor program">

@@ -24,6 +24,7 @@ import { initControls } from './ui-controls.js';
 import { initOutputs, renderOutputs } from './ui-outputs.js';
 import { initAutosave, openProject, saveProject } from './ui-projects.js';
 import { initScreens, openScreens } from './ui-screens.js';
+import { initMidiLearn, onMidiChange, onMidiLearned } from './ui-midi-learn.js';
 import { hasUpdate, initUpdates, openUpdates, updateSummary } from './ui-updates.js';
 import { openSettings } from './ui-outputs.js';
 import { $ } from './util.js';
@@ -62,7 +63,11 @@ const outputs = new OutputManager({
 
 const midi = new MidiController({
   onAction: handleMidiAction,
-  onChange: () => renderMidiDialog(),
+  onChange: () => {
+    renderMidiDialog();
+    onMidiChange();
+  },
+  onLearned: onMidiLearned,
 });
 
 Object.assign(app, { state, audio, compositor, outputs, midi, actions });
@@ -84,6 +89,7 @@ initGuide();
 initOutputs();
 initAutosave();
 initScreens();
+initMidiLearn();
 
 $('#btn-record-pause').addEventListener('click', actions.togglePause);
 $('#btn-replay').addEventListener('click', actions.toggleReplay);

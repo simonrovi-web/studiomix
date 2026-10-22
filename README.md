@@ -125,6 +125,12 @@ de 3 s que se puede cancelar.
 
 **Control**
 - Teclado, MIDI (aprender, faders, T-bar, LEDs de tally).
+- **Asignar MIDI con clic derecho:** clic derecho en cualquier control (CUT,
+  AUTO, T-bar, Negro, capas, Grabar, Emitir, Replay, vistas, faders y mute de
+  cada canal y del master, botones de la barra superior…) → «Asignar control
+  MIDI…» y mueve o pulsa el control del controlador. Los controles asignados
+  llevan una línea morada; desde el mismo menú se cambian o se quitan. En las
+  tarjetas, el clic derecho ofrece asignar «a Preview» y «a Program».
 - **T-bar como en un mezclador de hardware:** se queda donde la dejas; cada
   transición va de un extremo al otro (al llegar arriba, la siguiente es
   bajando). Con un fader MIDI ignora el ruido en los extremos, acepta el 99 %

@@ -157,7 +157,7 @@ function initTransitionPanel() {
 
   initTbar(compositor);
 
-  $('#overlay-buttons').replaceChildren(...state.overlays.map((_, i) => h('button', { type: 'button', onclick: () => actions.overlayButton(i) }, `Capa ${i + 1}`)));
+  $('#overlay-buttons').replaceChildren(...state.overlays.map((_, i) => h('button', { type: 'button', dataset: { midi: `overlay-${i + 1}` }, onclick: () => actions.overlayButton(i) }, `Capa ${i + 1}`)));
   $('#btn-trans-options').addEventListener('click', openTransitionOptions);
 }
 

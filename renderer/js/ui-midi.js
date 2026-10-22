@@ -1,4 +1,4 @@
-import { MIDI_ACTIONS, describeBinding } from './midi.js';
+import { CLICK_PREFIX, MIDI_ACTIONS, describeBinding, getAction } from './midi.js';
 import { app } from './store.js';
 import { ask, confirmAction } from './ui-common.js';
 import { $, h } from './util.js';
@@ -33,7 +33,9 @@ export function renderMidiDialog() {
   const box = $('#midi-actions');
   const rows = [];
   let group = null;
-  for (const action of MIDI_ACTIONS) {
+  // Interface buttons assigned with right-click are listed after the fixed functions.
+  const extra = Object.keys(midi.bindings).filter((id) => id.startsWith(CLICK_PREFIX)).map((id) => getAction(id, midi.bindings));
+  for (const action of [...MIDI_ACTIONS, ...extra]) {
     if (action.group !== group) {
       group = action.group;
       rows.push(h('h4', {}, group));

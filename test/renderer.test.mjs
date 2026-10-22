@@ -150,3 +150,41 @@ test('T-bar: after AUTO mid-way a MIDI fader is picked up at an end; the on-scre
   settleTbar(ui, 'cut');
   assert.equal(ui.bar, 100, 'a CUT leaves a resting bar alone');
 });
+
+test('MIDI learn: buttons take notes or CC, faders only CC, one control does one thing', async () => {
+  const { MidiController, getAction } = await import('../renderer/js/midi.js');
+  const fired = [];
+  const learned = [];
+  const midi = new MidiController({ onAction: (id, v) => fired.push([id, v]), onChange() {}, onLearned: (id, b, replaced) => learned.push([id, replaced]) });
+  midi.bindings = {};
+  midi.learn('cut');
+  midi.handle([0x90, 36, 100], 'pad');
+  assert.deepEqual(midi.bindings.cut, { type: 'note', channel: 0, number: 36 });
+  midi.handle([0x90, 36, 100], 'pad');
+  assert.deepEqual(fired, [['cut', 1]]);
+
+  // A fader ignores notes while learning and takes the next CC.
+  midi.learn('tbar');
+  midi.handle([0x90, 40, 100], 'pad');
+  assert.equal(midi.learning, 'tbar');
+  assert.equal(midi.learnRejected, 'note');
+  midi.handle([0xb0, 7, 64], 'fader');
+  assert.deepEqual(midi.bindings.tbar, { type: 'cc', channel: 0, number: 7 });
+
+  // Assigning the same pad to AUTO takes it away from CUT.
+  midi.learn('auto');
+  midi.handle([0x90, 36, 100], 'pad');
+  assert.equal(midi.bindings.cut, undefined);
+  assert.deepEqual(learned.at(-1), ['auto', ['cut']]);
+
+  // Any interface button, with its name kept even when re-learnt without one.
+  midi.learn('click:btn-chat', 'Botón «Chat»');
+  midi.handle([0x90, 50, 100], 'pad');
+  assert.equal(getAction('click:btn-chat', midi.bindings).label, 'Botón «Chat»');
+  midi.learn('click:btn-chat');
+  midi.handle([0x90, 51, 100], 'pad');
+  assert.equal(midi.bindings['click:btn-chat'].label, 'Botón «Chat»');
+  midi.handle([0x90, 51, 100], 'pad');
+  assert.deepEqual(fired.at(-1), ['click:btn-chat', 1]);
+  assert.equal(getAction('nonsense'), null);
+});

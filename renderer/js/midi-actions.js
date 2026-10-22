@@ -1,13 +1,38 @@
 // What MIDI controls do, and which of their lights are on.
 
 import { FADER_MAX } from './audio.js';
+import { CLICK_PREFIX } from './midi.js';
 import { app, changed, state } from './store.js';
 
 const audioChannelInput = (n) => state.inputs.filter((i) => i.channel)[n - 1] ?? null;
 
+/** Presses an interface button, as a click would (nothing if gone or disabled). */
+function pressButton(elementId) {
+  const el = document.getElementById(elementId);
+  if (el && !el.disabled) el.click();
+}
+
 export function handleMidiAction(id, value) {
   const { actions, audio, compositor } = app;
-  const direct = { 'record-pause': actions.togglePause, replay: actions.toggleReplay, 'replay-save': actions.saveReplay }[id];
+  if (id.startsWith(CLICK_PREFIX)) {
+    pressButton(id.slice(CLICK_PREFIX.length));
+    return;
+  }
+  const direct = {
+    'record-pause': actions.togglePause,
+    replay: actions.toggleReplay,
+    'replay-save': actions.saveReplay,
+    'view-studio': () => actions.setView('studio'),
+    'view-multiview': () => actions.setView('multiview'),
+    'view-vertical': () => actions.setView('vertical'),
+    vstream: () => pressButton('btn-vstream'),
+    vrecord: () => pressButton('btn-vrecord'),
+    monitor: () => pressButton('btn-monitor'),
+    'master-mute': () => {
+      audio.muted = !audio.muted;
+      audio.applyMaster();
+    },
+  }[id];
   if (direct) {
     direct();
     changed();
@@ -86,5 +111,14 @@ export function midiFeedback() {
   if (outputs.get('record')) lit.record = 127;
   if (outputs.isPaused('record')) lit['record-pause'] = 127;
   if (outputs.get('replay')) lit.replay = 127;
+  if (outputs.get('vstream')) lit.vstream = 127;
+  if (outputs.get('vrecord')) lit.vrecord = 127;
+  if (app.audio.muted) lit['master-mute'] = 127;
+  if (app.audio.monitoring) lit.monitor = 127;
+  lit[`view-${state.view}`] = 127;
+  // Interface buttons light up when they show as active.
+  for (const id of Object.keys(midi.bindings)) {
+    if (id.startsWith(CLICK_PREFIX) && document.getElementById(id.slice(CLICK_PREFIX.length))?.classList.contains('on')) lit[id] = 127;
+  }
   midi.feedback(lit);
 }

@@ -2,7 +2,12 @@
 // drive faders/T-bar from CCs, and light controller LEDs as tally feedback.
 
 const STORAGE_KEY = 'studiomix.midi';
-const CHANNEL_SLOTS = 8;
+/** Mixer channels and inputs MIDI can address by position. */
+export const CHANNEL_SLOTS = 8;
+export const INPUT_SLOTS = 16;
+
+/** Any button of the interface, by element id: "press this button". */
+export const CLICK_PREFIX = 'click:';
 
 function buildActions() {
   const actions = [
@@ -11,10 +16,12 @@ function buildActions() {
     { id: 'tbar', label: 'T-bar', kind: 'fader', group: 'Conmutación' },
     { id: 'ftb', label: 'Negro (fundido de salida)', kind: 'button', group: 'Conmutación' },
   ];
-  for (let i = 1; i <= CHANNEL_SLOTS; i++) actions.push({ id: `preview-${i}`, label: `Entrada ${i} a Preview`, kind: 'button', group: 'Preview' });
-  for (let i = 1; i <= CHANNEL_SLOTS; i++) actions.push({ id: `program-${i}`, label: `Entrada ${i} a Program (cut)`, kind: 'button', group: 'Program' });
+  for (let i = 1; i <= INPUT_SLOTS; i++) actions.push({ id: `preview-${i}`, label: `Entrada ${i} a Preview`, kind: 'button', group: 'Preview' });
+  for (let i = 1; i <= INPUT_SLOTS; i++) actions.push({ id: `program-${i}`, label: `Entrada ${i} a Program (cut)`, kind: 'button', group: 'Program' });
   for (let i = 1; i <= 4; i++) actions.push({ id: `overlay-${i}`, label: `Capa ${i}`, kind: 'button', group: 'Capas (overlays)' });
   actions.push({ id: 'master', label: 'Volumen master', kind: 'fader', group: 'Audio' });
+  actions.push({ id: 'master-mute', label: 'Silenciar master', kind: 'button', group: 'Audio' });
+  actions.push({ id: 'monitor', label: 'Escucha por auriculares/altavoces', kind: 'button', group: 'Audio' });
   for (let i = 1; i <= CHANNEL_SLOTS; i++) actions.push({ id: `fader-${i}`, label: `Volumen canal ${i}`, kind: 'fader', group: 'Audio' });
   for (let i = 1; i <= CHANNEL_SLOTS; i++) actions.push({ id: `mute-${i}`, label: `Silenciar canal ${i}`, kind: 'button', group: 'Audio' });
   actions.push(
@@ -24,12 +31,28 @@ function buildActions() {
     { id: 'replay', label: 'Búfer de repetición on/off', kind: 'button', group: 'Salidas' },
     { id: 'replay-save', label: 'Guardar repetición', kind: 'button', group: 'Salidas' },
     { id: 'snapshot', label: 'Captura de Program', kind: 'button', group: 'Salidas' },
+    { id: 'vstream', label: 'Emitir vertical / parar', kind: 'button', group: 'Salidas' },
+    { id: 'vrecord', label: 'Grabar vertical / parar', kind: 'button', group: 'Salidas' },
+    { id: 'view-studio', label: 'Vista Estudio', kind: 'button', group: 'Vistas' },
+    { id: 'view-multiview', label: 'Vista Multiview', kind: 'button', group: 'Vistas' },
+    { id: 'view-vertical', label: 'Vista Vertical', kind: 'button', group: 'Vistas' },
   );
   return actions;
 }
 
 export const MIDI_ACTIONS = buildActions();
 const ACTIONS_BY_ID = new Map(MIDI_ACTIONS.map((a) => [a.id, a]));
+
+/**
+ * The action for an id: a listed one, or "press button X" for any interface
+ * button (label kept with the binding, since the list doesn't know it).
+ */
+export function getAction(id, bindings = {}) {
+  const listed = ACTIONS_BY_ID.get(id);
+  if (listed) return listed;
+  if (String(id).startsWith(CLICK_PREFIX)) return { id, kind: 'button', group: 'Otros botones', label: bindings[id]?.label || `Botón ${id.slice(CLICK_PREFIX.length)}` };
+  return null;
+}
 
 export function describeBinding(b) {
   if (!b) return '—';
@@ -102,13 +125,17 @@ export class MidiController {
     return this.access ? [...this.access.outputs.values()] : [];
   }
 
-  learn(actionId) {
+  /** Waits for the next control moved or pressed; `label` names buttons outside the list. */
+  learn(actionId, label = null) {
     this.learning = actionId;
+    this.learningLabel = label;
     this.handlers.onChange();
   }
 
   cancelLearn() {
     this.learning = null;
+    this.learningLabel = null;
+    this.learnRejected = null;
     this.handlers.onChange();
   }
 
@@ -136,26 +163,39 @@ export class MidiController {
     this.lastMessage = { kind, channel, number, value, device: deviceName };
 
     if (this.learning) {
-      const action = ACTIONS_BY_ID.get(this.learning);
+      const id = this.learning;
+      const action = getAction(id, this.bindings);
       // Faders need a CC; buttons accept notes or CCs.
-      if (action.kind === 'fader' && kind !== 'cc') {
+      if (!action || (action.kind === 'fader' && kind !== 'cc')) {
+        this.learnRejected = kind;
         this.handlers.onChange();
         return;
       }
-      for (const [id, b] of Object.entries(this.bindings)) {
-        if (b.type === kind && b.channel === channel && b.number === number) delete this.bindings[id];
+      // One control does one thing: it leaves whatever it did before.
+      const replaced = [];
+      for (const [other, b] of Object.entries(this.bindings)) {
+        if (b.type === kind && b.channel === channel && b.number === number) {
+          replaced.push(other);
+          delete this.bindings[other];
+        }
       }
-      this.bindings[this.learning] = { type: kind, channel, number };
+      const previousLabel = this.bindings[id]?.label;
+      const binding = { type: kind, channel, number };
+      if (id.startsWith(CLICK_PREFIX)) binding.label = this.learningLabel ?? previousLabel;
+      this.bindings[id] = binding;
       this.learning = null;
+      this.learningLabel = null;
+      this.learnRejected = null;
       this.save();
       this.ledState.clear();
+      this.handlers.onLearned?.(id, binding, replaced.filter((r) => r !== id));
       this.handlers.onChange();
       return;
     }
 
     for (const [id, b] of Object.entries(this.bindings)) {
       if (b.type !== kind || b.channel !== channel || b.number !== number) continue;
-      const action = ACTIONS_BY_ID.get(id);
+      const action = getAction(id, this.bindings);
       if (!action) continue;
       if (action.kind === 'fader') {
         this.handlers.onAction(id, value / 127);
