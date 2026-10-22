@@ -698,3 +698,9 @@ input[type=range].midi-bound { box-shadow: none; outline: 1px solid rgba(167, 12
 .midi-learn-dot { width: 12px; height: 12px; border-radius: 50%; background: #a77bff; flex: none; animation: midi-learn-dot 1s ease-in-out infinite; }
 @keyframes midi-learn-dot { 50% { opacity: 0.3; transform: scale(0.7); } }
 .midi-profiles { gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+/* Placing a layer on the Preview: compact numbers and actions under the label. */
+.layer-tools { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; margin: 0 0 6px; }
+.layer-tools .field { flex-direction: row; align-items: center; font-size: 11px; gap: 4px; }
+#layer-tools .field input { width: 58px; min-width: 0; flex: none; padding: 2px 4px; font-size: 12px; }
+.layer-tools button { padding: 2px 8px; font-size: 12px; }
+#btn-layer-edit.on { background: #e5383b; color: #fff; border-color: #e5383b; }

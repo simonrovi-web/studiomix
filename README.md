@@ -47,6 +47,12 @@ de 3 s que se puede cancelar.
   cada vez que salen al aire, abrirse en una ventana para hacer clic en ellas y
   tener un panel de control propio. Todas comparten almacenamiento, así que un
   panel que guarda en `localStorage` controla el gráfico que está al aire.
+- **Colocar y recortar capas sobre el Preview** (botón **✥ Posición**): el
+  Preview muestra Program atenuado con la entrada encima; arrastrar la mueve,
+  las esquinas la escalan (Mayús: libre), el círculo la rota y **Alt+arrastrar
+  un borde o esquina la recorta** sin cambiar su tamaño. Queda como «Posición
+  libre» para Capa 1–4 y se guarda en el proyecto. Alt+arrastrar también recorta
+  los elementos de una escena.
 - Preview/Program con Cut, Auto, T-bar y transiciones: fundido, fundido a negro,
   cortinilla, deslizar, zoom, iris, luma wipe (13 patrones) y stinger.
 - **Stingers con transparencia:** WebM con alfa, **MOV con alfa** (ProRes 4444,

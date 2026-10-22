@@ -245,3 +245,14 @@ test('Conspiracy profile names only existing MIDI functions, each once', async (
     for (const id of ids) assert.ok(getAction(id), `${profile.id}: ${id}`);
   }
 });
+
+test('layers sit in their free box when placed, else in their preset', async () => {
+  const { layerBox, LAYOUTS } = await import('../renderer/js/compositor.js');
+  const preset = { layout: 'tr', box: null };
+  const [x, y, w, h] = LAYOUTS.tr.rect;
+  assert.deepEqual(layerBox(preset), { x, y, w, h, rotation: 0 });
+  const free = { layout: 'custom', box: { x: 0.5, y: 0.1, w: 0.3, h: 0.2, rotation: 15 } };
+  assert.equal(layerBox(free), free.box);
+  // Chosen in the dialog before ever placing it: full frame, not nothing.
+  assert.deepEqual(layerBox({ layout: 'custom', box: null }), { x: 0, y: 0, w: 1, h: 1, rotation: 0 });
+});

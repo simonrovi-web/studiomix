@@ -63,6 +63,8 @@ export class Input {
     this.name = name;
     this.fit = 'contain';
     this.layout = 'full';
+    // Free layer box (canvas fractions, rotation in degrees) for layout 'custom'.
+    this.box = null;
     this.channel = null;
     this.stream = null;
     this.defaultAfv = false;
@@ -161,13 +163,14 @@ export class Input {
   }
 
   serialize() {
-    return { type: this.type, name: this.name, fit: this.fit, layout: this.layout, fx: { ...this.fx }, audio: this.channel?.serialize() ?? null };
+    return { type: this.type, name: this.name, fit: this.fit, layout: this.layout, box: this.box && { ...this.box }, fx: { ...this.fx }, audio: this.channel?.serialize() ?? null };
   }
 
   restore(data) {
     this.name = data.name ?? this.name;
     this.fit = data.fit ?? this.fit;
     this.layout = data.layout ?? this.layout;
+    if (data.box) this.box = { rotation: 0, ...data.box };
     Object.assign(this.fx, data.fx ?? {});
   }
 

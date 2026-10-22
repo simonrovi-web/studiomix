@@ -1,11 +1,14 @@
-// Scene editing on the Preview monitor (select, move, resize, rotate with
-// edge/centre snapping and guides) plus the floating "Fuentes" dock.
+// Editing on the Preview monitor: a scene's items, or the layer box of the
+// input in Preview over a dimmed Program (select, move, resize, rotate with
+// edge/centre snapping and guides; Alt+drag on a handle crops), plus the
+// floating "Fuentes" dock for scenes and the layer toolbar.
+import { layerBox } from './compositor.js';
 import { INPUT_ICONS } from './inputs.js';
 import { BLEND_MODES, ITEM_FITS, SceneInput, sceneContains } from './scenes.js';
 import { app, byId, changed, state } from './store.js';
-import { fillSelect, openPanel } from './ui-common.js';
+import { fillSelect, openPanel, toast } from './ui-common.js';
 import { editInput } from './ui-inputs.js';
-import { $, h } from './util.js';
+import { $, framedRect, h } from './util.js';
 
 const HANDLE = 6;
 const SNAP_PX = 10;
@@ -13,6 +16,8 @@ const ROTATE_OFFSET = 26;
 const HANDLES = [
   [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0],
 ];
+const LAYER_ITEM = 'layer';
+const MIN_CROP_PX = 16;
 
 let overlay;
 let octx;
@@ -20,6 +25,8 @@ let selectedId = null;
 let hoverId = null;
 let drag = null;
 let guides = [];
+// Input whose layer box is being placed on the Preview, or null.
+let layerEditId = null;
 
 const dpr = () => window.devicePixelRatio || 1;
 
@@ -28,8 +35,32 @@ export function previewScene() {
   return state.view === 'studio' && input instanceof SceneInput ? input : null;
 }
 
-function selectedItem(scene = previewScene()) {
-  return scene?.items.find((i) => i.id === selectedId) ?? null;
+/** The input in Preview while its layer box is being placed. */
+function layerInput() {
+  const input = layerEditId != null && state.view === 'studio' ? byId(state.previewId) : null;
+  return input?.id === layerEditId ? input : null;
+}
+
+/** The layer box seen as an editor item (reads and writes input.box). */
+function layerItem(input) {
+  const box = input.box;
+  const item = { id: LAYER_ITEM, inputId: input.id, visible: true, locked: false };
+  for (const key of ['x', 'y', 'w', 'h', 'rotation']) {
+    Object.defineProperty(item, key, { get: () => box[key], set: (v) => { box[key] = v; }, enumerable: true });
+  }
+  return item;
+}
+
+/** What the Preview edits now: a scene's items or one layer box. */
+function editTarget() {
+  const scene = previewScene();
+  if (scene) return { items: scene.items, scene };
+  const input = layerInput();
+  return input ? { items: [layerItem(input)], layer: input } : null;
+}
+
+function selectedItem(target = editTarget()) {
+  return target?.items.find((i) => i.id === selectedId) ?? null;
 }
 
 // --- geometry -----------------------------------------------------------------
@@ -73,9 +104,9 @@ function local(b, sx, sy) {
   return rot(sx - b.cx, sy - b.cy, -b.a);
 }
 
-function hitItem(scene, sx, sy) {
-  for (let i = scene.items.length - 1; i >= 0; i--) {
-    const item = scene.items[i];
+function hitItem(target, sx, sy) {
+  for (let i = target.items.length - 1; i >= 0; i--) {
+    const item = target.items[i];
     if (!item.visible) continue;
     const b = box(item);
     const [lx, ly] = local(b, sx, sy);
@@ -119,14 +150,14 @@ function bounds(item) {
 }
 
 /** Snaps a moving item to the canvas edges/centre and to other items' edges. */
-function snapMove(scene, item, dx, dy) {
+function snapMove(target, item, dx, dy) {
   const { W, H, scale } = contentRect();
   const dist = (SNAP_PX * dpr()) / scale;
   const bb = bounds(item);
   const xTargets = [0, W / 2, W];
   const yTargets = [0, H / 2, H];
-  for (const other of scene.items) {
-    if (other === item || !other.visible) continue;
+  for (const other of target.items) {
+    if (other.id === item.id || !other.visible) continue;
     const o = bounds(other);
     xTargets.push(o.l, o.r);
     yTargets.push(o.t, o.b);
@@ -151,11 +182,83 @@ function snapMove(scene, item, dx, dy) {
 
 // --- pointer interaction ---------------------------------------------------------
 
+/** Displayed shape (width/height) of an input after its crop, zoom and rotation, if known. */
+function contentAspect(input) {
+  const src = input?.source?.();
+  if (!src) return null;
+  const r = framedRect(input.fx, src.w, src.h);
+  const a = r.w / r.h;
+  return input.fx.rotate % 180 ? 1 / a : a;
+}
+
+/** Shrinks a box to the picture it shows ("contain"), so cropping trims the picture, not bands. */
+function fitBoxToContent(item, input) {
+  const aspect = contentAspect(input);
+  if (!aspect) return;
+  const b = box(item);
+  const bw = b.hw * 2;
+  const bh = b.hh * 2;
+  const [w, hgt] = bw / bh > aspect ? [bh * aspect, bh] : [bw, bw / aspect];
+  if (Math.abs(w - bw) > 1 || Math.abs(hgt - bh) > 1) setBox(item, b.cx, b.cy, w, hgt);
+}
+
+/** Starts an Alt+drag crop on a handle; null when this input can't be cropped here. */
+function startCrop(item, side) {
+  const input = byId(item.inputId);
+  if (!input?.source?.()) {
+    toast('Esta fuente no se puede recortar (rótulos, colores y escenas no tienen imagen que recortar).', 'error');
+    return null;
+  }
+  if (input.fx.rotate) {
+    toast('Para recortar aquí, quita antes la rotación de 90° (⚙ → Ajuste y recorte).', 'error');
+    return null;
+  }
+  const fit = item.id === LAYER_ITEM ? input.fit : item.fit;
+  if (fit === 'contain') fitBoxToContent(item, input);
+  const { cropL, cropR, cropT, cropB } = input.fx;
+  return { item, handle: 'crop', side, input, box: box(item), crop: { cropL, cropR, cropT, cropB } };
+}
+
+/**
+ * Moves the dragged edge(s) to the pointer and crops the picture by the same
+ * amount, so what stays keeps its size and place (like cropping in OBS).
+ */
+function dragCrop(sx, sy) {
+  const { item, side: [hx, hy], box: b, crop: c, input } = drag;
+  const fx = input.fx;
+  const { scale } = contentRect();
+  const min = (MIN_CROP_PX * dpr()) / scale;
+  const [lx, ly] = rot(sx - b.cx, sy - b.cy, -b.a);
+  const zoom = Math.max(1, fx.zoom || 1);
+  const clamp = (v, hi) => Math.min(Math.max(v, 0), hi);
+  let [left, right, top, bottom] = [-b.hw, b.hw, -b.hh, b.hh];
+  // A mirrored picture shows its right side on the left of the box.
+  const [kL, kR] = fx.flip ? ['cropR', 'cropL'] : ['cropL', 'cropR'];
+  const cw = (1 - c.cropL - c.cropR) / zoom;
+  const ch = (1 - c.cropT - c.cropB) / zoom;
+  if (hx === -1) {
+    fx[kL] = clamp(c[kL] + ((Math.min(lx, right - min) - left) / (2 * b.hw)) * cw, 1 - c[kR] - 0.02);
+    left += ((fx[kL] - c[kL]) / cw) * 2 * b.hw;
+  } else if (hx === 1) {
+    fx[kR] = clamp(c[kR] + ((right - Math.max(lx, left + min)) / (2 * b.hw)) * cw, 1 - c[kL] - 0.02);
+    right -= ((fx[kR] - c[kR]) / cw) * 2 * b.hw;
+  }
+  if (hy === -1) {
+    fx.cropT = clamp(c.cropT + ((Math.min(ly, bottom - min) - top) / (2 * b.hh)) * ch, 1 - c.cropB - 0.02);
+    top += ((fx.cropT - c.cropT) / ch) * 2 * b.hh;
+  } else if (hy === 1) {
+    fx.cropB = clamp(c.cropB + ((bottom - Math.max(ly, top + min)) / (2 * b.hh)) * ch, 1 - c.cropT - 0.02);
+    bottom -= ((fx.cropB - c.cropB) / ch) * 2 * b.hh;
+  }
+  const [cx, cy] = rot((left + right) / 2, (top + bottom) / 2, b.a);
+  setBox(item, b.cx + cx, b.cy + cy, right - left, bottom - top);
+}
+
 function onPointerDown(e) {
-  const scene = previewScene();
-  if (!scene || e.button !== 0) return;
+  const target = editTarget();
+  if (!target || e.button !== 0) return;
   const [sx, sy] = eventToScene(e);
-  const current = selectedItem(scene);
+  const current = selectedItem(target);
   const handle = current && !current.locked ? hitHandle(current, sx, sy) : null;
   // Clicking inside the selected item keeps it, even under a full-frame layer (e.g. a title).
   const insideCurrent = current?.visible && (() => {
@@ -163,10 +266,20 @@ function onPointerDown(e) {
     const [lx, ly] = local(b, sx, sy);
     return Math.abs(lx) <= b.hw && Math.abs(ly) <= b.hh;
   })();
-  const item = handle || insideCurrent ? current : hitItem(scene, sx, sy);
+  const item = handle || insideCurrent ? current : hitItem(target, sx, sy);
   selectedId = item?.id ?? null;
   renderDock();
   if (!item || item.locked) return;
+  if (e.altKey && Array.isArray(handle)) {
+    drag = startCrop(item, handle);
+    if (!drag) return;
+    try {
+      overlay.setPointerCapture(e.pointerId);
+    } catch {
+      // Pointer already gone.
+    }
+    return;
+  }
   try {
     overlay.setPointerCapture(e.pointerId);
   } catch {
@@ -177,25 +290,27 @@ function onPointerDown(e) {
 }
 
 function onPointerMove(e) {
-  const scene = previewScene();
-  if (!scene) return;
+  const target = editTarget();
+  if (!target) return;
   const [sx, sy] = eventToScene(e);
   if (!drag) {
-    const item = hitItem(scene, sx, sy);
+    const item = hitItem(target, sx, sy);
     hoverId = item?.id ?? null;
-    const sel = selectedItem(scene);
+    const sel = selectedItem(target);
     const handle = sel && !sel.locked ? hitHandle(sel, sx, sy) : null;
-    overlay.style.cursor = handle === 'rotate' ? 'grab' : handle ? 'nwse-resize' : item && !item.locked ? 'move' : 'default';
+    overlay.style.cursor = handle === 'rotate' ? 'grab' : handle ? (e.altKey ? 'crosshair' : 'nwse-resize') : item && !item.locked ? 'move' : 'default';
     return;
   }
   const { item, handle, start, box: b } = drag;
   const { W, H } = contentRect();
-  if (handle === 'move') {
+  if (handle === 'crop') {
+    dragCrop(sx, sy);
+  } else if (handle === 'move') {
     let dx = sx - start[0];
     let dy = sy - start[1];
     // Restore the starting position before measuring snaps.
     Object.assign(item, drag.rect);
-    if (!e.altKey) [dx, dy] = snapMove(scene, item, dx, dy);
+    if (!e.altKey) [dx, dy] = snapMove(target, item, dx, dy);
     else guides = [];
     item.x = drag.rect.x + dx / W;
     item.y = drag.rect.y + dy / H;
@@ -225,6 +340,7 @@ function onPointerMove(e) {
     setBox(item, b.cx + cx, b.cy + cy, w, hgt);
   }
   renderDock(true);
+  renderLayerTools(true);
 }
 
 function onPointerUp(e) {
@@ -249,8 +365,13 @@ function onDoubleClick(e) {
 
 /** Arrow keys / Delete / Escape for the selected item; returns true if handled. */
 export function handleSceneKey(e) {
-  const scene = previewScene();
-  const item = selectedItem(scene);
+  const target = editTarget();
+  if (target?.layer && e.key === 'Escape') {
+    stopLayerEdit();
+    e.preventDefault();
+    return true;
+  }
+  const item = selectedItem(target);
   if (!item) return false;
   const { W, H } = contentRect();
   const step = e.shiftKey ? 10 : 1;
@@ -258,8 +379,8 @@ export function handleSceneKey(e) {
   if (moves[e.key] && !item.locked) {
     item.x += moves[e.key][0] / W;
     item.y += moves[e.key][1] / H;
-  } else if (e.key === 'Delete') {
-    scene.removeItem(item);
+  } else if (e.key === 'Delete' && target.scene) {
+    target.scene.removeItem(item);
     selectedId = null;
   } else if (e.key === 'Escape') {
     selectedId = null;
@@ -277,9 +398,11 @@ let overlayDirty = true;
 let overlaySize = { width: 0, height: 0 };
 
 function drawOverlay() {
-  const scene = previewScene();
+  // The Preview moved on to another input: placing that layer is over.
+  if (layerEditId != null && !layerInput()) stopLayerEdit();
+  const target = editTarget();
   // Nothing to edit: clear once and skip the per-frame work entirely.
-  if (!scene) {
+  if (!target) {
     if (overlayDirty) {
       octx.clearRect(0, 0, overlay.width, overlay.height);
       overlay.style.pointerEvents = 'none';
@@ -316,12 +439,12 @@ function drawOverlay() {
     octx.setLineDash([]);
   };
 
-  for (const item of scene.items) {
+  for (const item of target.items) {
     if (!item.visible || item.id === selectedId) continue;
     outline(item, item.id === hoverId ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.18)', 1, [4, 4]);
   }
 
-  const sel = selectedItem(scene);
+  const sel = selectedItem(target);
   if (sel?.visible) {
     const color = sel.locked ? '#8a93a4' : '#e5383b';
     outline(sel, color, 2);
@@ -497,6 +620,95 @@ export function renderDock(geometryOnly = false) {
   );
 }
 
+/** True when the input in Preview can be placed as a free layer. */
+export function layerEditable() {
+  const input = byId(state.previewId);
+  return state.view === 'studio' && !!input && !(input instanceof SceneInput) && input.hasVideo;
+}
+
+/** Places the input in Preview as a layer over Program, starting from its current position. */
+export function startLayerEdit() {
+  if (!layerEditable()) return;
+  const input = byId(state.previewId);
+  if (input.layout !== 'custom' || !input.box) {
+    const { W, H } = { W: state.settings.width, H: state.settings.height };
+    let { x, y, w, h: hgt } = layerBox(input);
+    // Start with the picture's own shape inside the preset's area.
+    const aspect = contentAspect(input);
+    if (aspect) {
+      const fitH = (w * W) / aspect / H;
+      if (fitH <= hgt) {
+        y += (hgt - fitH) / 2;
+        hgt = fitH;
+      } else {
+        const fitW = (hgt * H * aspect) / W;
+        x += (w - fitW) / 2;
+        w = fitW;
+      }
+    }
+    input.box = { x, y, w, h: hgt, rotation: 0 };
+    input.layout = 'custom';
+  }
+  layerEditId = input.id;
+  selectedId = LAYER_ITEM;
+  app.compositor.layerEditId = input.id;
+  toast('Coloca la capa: arrastra para moverla, las esquinas la escalan (Mayús: libre) y Alt+arrastrar un borde o esquina la recorta. Esc o «Listo» para terminar.');
+  renderLayerTools();
+  changed();
+}
+
+export function stopLayerEdit() {
+  if (layerEditId == null) return;
+  layerEditId = null;
+  if (selectedId === LAYER_ITEM) selectedId = null;
+  app.compositor.layerEditId = null;
+  guides = [];
+  renderLayerTools();
+  changed();
+}
+
+/** Numbers and shortcuts for the layer being placed (X, Y, size, rotation). */
+function renderLayerTools(geometryOnly = false) {
+  const bar = $('#layer-tools');
+  const input = layerInput();
+  $('#btn-layer-edit')?.classList.toggle('on', !!input);
+  if (!bar) return;
+  bar.hidden = !input;
+  if (!input) {
+    bar.replaceChildren();
+    return;
+  }
+  const W = state.settings.width;
+  const H = state.settings.height;
+  const b = input.box;
+  if (geometryOnly) {
+    for (const [name, v] of [['x', b.x * W], ['y', b.y * H], ['w', b.w * W], ['h', b.h * H]]) {
+      const el = bar.querySelector(`[data-geo=${name}]`);
+      if (el && document.activeElement !== el) el.value = Math.round(v);
+    }
+    return;
+  }
+  const geo = (name, label, value, apply) => {
+    const field = numberField(label, value, (v) => {
+      apply(v);
+      changed();
+    });
+    field.querySelector('input').dataset.geo = name;
+    return field;
+  };
+  const act = (label, title, fn) => h('button', { type: 'button', class: 'ghost small', title, onclick: () => { fn(); renderLayerTools(); changed(); } }, label);
+  bar.replaceChildren(
+    geo('x', 'X', b.x * W, (v) => (b.x = v / W)),
+    geo('y', 'Y', b.y * H, (v) => (b.y = v / H)),
+    geo('w', 'Ancho', b.w * W, (v) => (b.w = Math.max(8, v) / W)),
+    geo('h', 'Alto', b.h * H, (v) => (b.h = Math.max(8, v) / H)),
+    act('Pantalla completa', 'Ocupa todo el cuadro', () => Object.assign(b, { x: 0, y: 0, w: 1, h: 1, rotation: 0 })),
+    act('Centrar', 'Centra la capa', () => Object.assign(b, { x: (1 - b.w) / 2, y: (1 - b.h) / 2 })),
+    act('Sin recorte', 'Quita el recorte de esta fuente', () => Object.assign(input.fx, { cropL: 0, cropR: 0, cropT: 0, cropB: 0 })),
+    h('button', { type: 'button', class: 'accent small', onclick: stopLayerEdit }, 'Listo'),
+  );
+}
+
 export function openSceneDock() {
   const dlg = $('#dlg-scene');
   openPanel(dlg);
@@ -518,6 +730,7 @@ export function initSceneEditor() {
     hoverId = null;
   });
   $('#btn-scene-dock').addEventListener('click', openSceneDock);
+  $('#btn-layer-edit').addEventListener('click', () => (layerEditId != null ? stopLayerEdit() : startLayerEdit()));
   $('#btn-close-scene').addEventListener('click', () => $('#dlg-scene').close());
   app.compositor.onFrame = () => {
     if (!document.hidden) drawOverlay();

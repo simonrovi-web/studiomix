@@ -11,7 +11,15 @@ export const LAYOUTS = {
   right: { label: 'Mitad derecha', rect: [0.5, 0, 0.5, 1] },
   sideL: { label: 'Lado a lado izquierda', rect: [0.02, 0.24, 0.47, 0.52] },
   sideR: { label: 'Lado a lado derecha', rect: [0.51, 0.24, 0.47, 0.52] },
+  custom: { label: 'Posición libre (se ajusta en Preview)', rect: [0, 0, 1, 1] },
 };
+
+/** Where an input sits as a layer: its free box, or its preset. */
+export function layerBox(input) {
+  if (input.layout === 'custom' && input.box) return input.box;
+  const [x, y, w, h] = (LAYOUTS[input.layout] || LAYOUTS.full).rect;
+  return { x, y, w, h, rotation: 0 };
+}
 
 export const TRANSITIONS = {
   fade: 'Fundido',
@@ -60,6 +68,8 @@ export class Compositor {
     // Screens and phone monitors watching Preview/Multiview: Preview is drawn at
     // full size and the multiview kept up to date only while someone watches.
     this.watchers = { program: 0, preview: 0, multiview: 0 };
+    // Input whose layer box is being placed on the Preview (see ui-scenes.js).
+    this.layerEditId = null;
     this.monitorTracks = {};
     this.onCommit = null;
     this.onMasterFade = null;
@@ -271,6 +281,20 @@ export class Compositor {
 
   // --- rendering -----------------------------------------------------------
 
+  /** An input as a layer in its box (rotated around the box centre). */
+  drawLayer(ctx, input, W, H, now, mode, anim = 1) {
+    const b = layerBox(input);
+    if (!b.rotation) {
+      this.drawInput(ctx, input, b.x * W, b.y * H, b.w * W, b.h * H, now, mode, anim);
+      return;
+    }
+    ctx.save();
+    ctx.translate((b.x + b.w / 2) * W, (b.y + b.h / 2) * H);
+    ctx.rotate((b.rotation * Math.PI) / 180);
+    this.drawInput(ctx, input, (-b.w / 2) * W, (-b.h / 2) * H, b.w * W, b.h * H, now, mode, anim);
+    ctx.restore();
+  }
+
   drawInput(ctx, input, x, y, w, h, now, mode, anim = 1) {
     ctx.save();
     try {
@@ -412,9 +436,8 @@ export class Compositor {
     for (const ov of s.overlays) {
       const input = this.byId(ov.inputId);
       if (!input || ov.alpha <= 0) continue;
-      const [rx, ry, rw, rh] = (LAYOUTS[input.layout] || LAYOUTS.full).rect;
       ctx.globalAlpha = ov.alpha;
-      this.drawInput(ctx, input, rx * W, ry * H, rw * W, rh * H, now, 'program', ov.alpha);
+      this.drawLayer(ctx, input, W, H, now, 'program', ov.alpha);
     }
     ctx.globalAlpha = 1;
     this.stinger.draw(ctx, W, H);
@@ -436,7 +459,15 @@ export class Compositor {
       const vctx = this.vctx;
       vctx.fillStyle = '#000';
       vctx.fillRect(0, 0, this.preview.width, this.preview.height);
-      if (preview) this.drawInput(vctx, preview, 0, 0, this.preview.width, this.preview.height, now, 'preview');
+      if (preview && this.layerEditId === preview.id) {
+        // Placing a layer: Program dimmed underneath, the layer where it will go.
+        vctx.globalAlpha = 0.45;
+        vctx.drawImage(this.program, 0, 0, this.preview.width, this.preview.height);
+        vctx.globalAlpha = 1;
+        this.drawLayer(vctx, preview, this.preview.width, this.preview.height, now, 'program');
+      } else if (preview) {
+        this.drawInput(vctx, preview, 0, 0, this.preview.width, this.preview.height, now, 'preview');
+      }
     }
 
     // Audio follows video: an input is audible as much as it is visible on Program,

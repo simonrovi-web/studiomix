@@ -7,7 +7,7 @@ import { app, byId, changed, onChange, saveSettings, state } from './store.js';
 import { ask, closePanels, fillSelect, isTyping, panelOpen, toast } from './ui-common.js';
 import { adders, updateCardTimes, updateCards } from './ui-inputs.js';
 import { updateStrips } from './ui-mixer.js';
-import { handleSceneKey, previewScene, renderDock } from './ui-scenes.js';
+import { handleSceneKey, layerEditable, previewScene, renderDock } from './ui-scenes.js';
 import { renderGuide } from './ui-guide.js';
 import { midiFeedback } from './midi-actions.js';
 import { displayedBar } from './tbar.js';
@@ -33,6 +33,7 @@ function refresh() {
   $('#trans-type').value = state.transition.type;
   $('#trans-duration').value = state.transition.duration;
   $('#btn-scene-dock').hidden = !previewScene();
+  $('#btn-layer-edit').hidden = !layerEditable();
   renderDock();
   renderGuide();
   midiFeedback();
