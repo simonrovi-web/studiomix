@@ -101,7 +101,12 @@
           <span class="row nowrap"><input id="trans-duration" type="number" min="100" max="5000" step="100" title="Duración de la transición en milisegundos"><span class="unit">ms</span></span>
         </label>
       </div>
-      <div class="tbar-wrap"><input id="tbar" type="range" min="0" max="100" value="0" title="T-bar"></div>
+      <div class="tbar" id="tbar" role="slider" tabindex="0" aria-label="T-bar" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+           title="T-bar: arrástrala para hacer la transición a mano. También con la rueda del ratón o las flechas ↑ ↓.">
+        <div class="tbar-scale" aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
+        <div class="tbar-track"><div class="tbar-fill"></div><div class="tbar-handle"><i></i><i></i><i></i></div></div>
+        <div class="tbar-readout"><b class="tbar-pct">0%</b><span class="tbar-dir">▲</span></div>
+      </div>
       <div class="overlay-buttons" id="overlay-buttons"></div>
       <button id="btn-ftb" class="ftb" title="Fundido a negro de toda la salida, imagen y sonido (B)">■ Negro</button>
     </section>

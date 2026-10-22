@@ -10,6 +10,7 @@ import { updateStrips } from './ui-mixer.js';
 import { handleSceneKey, previewScene, renderDock } from './ui-scenes.js';
 import { renderGuide } from './ui-guide.js';
 import { midiFeedback } from './midi-actions.js';
+import { displayedBar } from './tbar.js';
 import { openProject, saveProject } from './ui-projects.js';
 import { isHtml, loadStinger } from './stinger-files.js';
 import { $, $$, fmtTime, h } from './util.js';
@@ -40,15 +41,8 @@ function refresh() {
 function startRefresh() {
   onChange(refresh);
 
-  // Fast-changing bits: transition progress, T-bar, clip times.
-  setInterval(() => {
-    const t = state.transition;
-    const p = t.running ? t.progress : t.manual / 100;
-    $('#trans-progress').style.width = `${(p * 100).toFixed(1)}%`;
-    const tbar = $('#tbar');
-    if (t.running) tbar.value = Math.round(t.progress * 100);
-    else if (document.activeElement !== tbar) tbar.value = t.manual;
-  }, 50);
+  // Fast-changing bits: transition progress and T-bar.
+  setInterval(renderTbar, 50);
 
   setInterval(() => {
     updateCardTimes();
@@ -58,6 +52,86 @@ function startRefresh() {
     label.textContent = remaining ? `quedan ${fmtTime(remaining * 1000)}` : '';
     label.style.color = remaining && remaining < 10 ? 'var(--program)' : '';
   }, 250);
+}
+
+// --- T-bar ------------------------------------------------------------------
+// Drawn from state.transition (see tbar.js); only touches the DOM when something
+// visible changed, since it runs 20 times a second.
+
+let tbarView = '';
+
+function renderTbar() {
+  const t = state.transition;
+  const progress = t.running ? t.progress : t.manual / 100;
+  const bar = displayedBar(t);
+  const from = t.barFrom ?? 0;
+  const pct = Math.round(progress * 100);
+  const key = `${bar.toFixed(1)}|${from}|${pct}|${t.barLocked}|${t.running}`;
+  if (key === tbarView) return;
+  tbarView = key;
+  $('#trans-progress').style.width = `${(progress * 100).toFixed(1)}%`;
+  const el = $('#tbar');
+  $('.tbar-handle', el).style.bottom = `${bar}%`;
+  // The fill runs from the end the transition started at to the handle.
+  const fill = $('.tbar-fill', el);
+  fill.style.bottom = `${Math.min(from, bar)}%`;
+  fill.style.height = `${Math.abs(bar - from)}%`;
+  $('.tbar-pct', el).textContent = `${pct}%`;
+  const dir = $('.tbar-dir', el);
+  dir.textContent = t.barLocked ? '⇅' : from === 0 ? '▲' : '▼';
+  dir.title = t.barLocked ? 'Lleva la T-bar del controlador a un extremo para retomarla' : from === 0 ? 'La próxima transición: hacia arriba' : 'La próxima transición: hacia abajo';
+  el.classList.toggle('active', pct > 0);
+  el.classList.toggle('locked', !!t.barLocked);
+  el.setAttribute('aria-valuenow', String(Math.round(bar)));
+  el.setAttribute('aria-valuetext', t.barLocked ? 'Esperando a que la T-bar del controlador llegue a un extremo' : `Transición al ${pct}%`);
+}
+
+function initTbar(compositor) {
+  const el = $('#tbar');
+  const track = $('.tbar-track', el);
+  const move = (pos) => {
+    compositor.setBar(pos, 'ui');
+    renderTbar();
+  };
+  const fromPointer = (e) => {
+    const r = track.getBoundingClientRect();
+    return ((r.bottom - e.clientY) / r.height) * 100;
+  };
+  let dragging = false;
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    dragging = true;
+    el.classList.add('dragging');
+    el.setPointerCapture(e.pointerId);
+    el.focus();
+    move(fromPointer(e));
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (dragging) move(fromPointer(e));
+  });
+  const stop = () => {
+    dragging = false;
+    el.classList.remove('dragging');
+  };
+  el.addEventListener('pointerup', stop);
+  el.addEventListener('pointercancel', stop);
+  el.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    move((state.transition.bar ?? 0) + (e.deltaY < 0 ? 4 : -4));
+  }, { passive: false });
+  el.addEventListener('keydown', (e) => {
+    const bar = state.transition.bar ?? 0;
+    const step = { ArrowUp: 5, ArrowRight: 5, ArrowDown: -5, ArrowLeft: -5, PageUp: 25, PageDown: -25 }[e.key];
+    let next = step === undefined ? null : bar + step;
+    if (e.key === 'Home') next = 0;
+    if (e.key === 'End') next = 100;
+    if (next == null) return;
+    // Keep the arrows for the T-bar instead of the scene editor while it has focus.
+    e.preventDefault();
+    e.stopPropagation();
+    move(next);
+  });
+  renderTbar();
 }
 
 function initTransitionPanel() {
@@ -81,10 +155,7 @@ function initTransitionPanel() {
   $('#btn-auto').addEventListener('click', actions.auto);
   $('#btn-ftb').addEventListener('click', actions.ftb);
 
-  const tbar = $('#tbar');
-  tbar.addEventListener('input', () => {
-    if (compositor.setManual(Number(tbar.value))) tbar.value = 0;
-  });
+  initTbar(compositor);
 
   $('#overlay-buttons').replaceChildren(...state.overlays.map((_, i) => h('button', { type: 'button', onclick: () => actions.overlayButton(i) }, `Capa ${i + 1}`)));
   $('#btn-trans-options').addEventListener('click', openTransitionOptions);

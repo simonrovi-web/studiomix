@@ -63,7 +63,8 @@ export const state = {
   programId: null,
   overlays: Array.from({ length: OVERLAY_COUNT }, () => ({ inputId: null, alpha: 0, target: 0 })),
   ftb: { alpha: 0, target: 0 },
-  transition: { type: 'fade', duration: 1000, running: false, startedAt: 0, from: 0, manual: 0, progress: 0 },
+  // bar/barFrom/barLocked/barSource: the T-bar's physical position (see tbar.js).
+  transition: { type: 'fade', duration: 1000, running: false, startedAt: 0, from: 0, manual: 0, progress: 0, bar: 0, barFrom: 0, barLocked: false, barSource: 'ui' },
   view: 'studio',
 };
 state.transition.type = state.settings.transitionType;
@@ -80,9 +81,22 @@ export function overlayIndexOf(id) {
 
 const bus = new EventTarget();
 
+// Listeners redraw the whole interface, so bursts of changes (a MIDI fader
+// sends dozens of messages a second, a slider drag even more) are grouped:
+// at most one notification every REFRESH_MS, always including the last change.
+const REFRESH_MS = 33;
+let pending = 0;
+let lastNotified = 0;
+
 /** Notify listeners that state changed; UI modules re-render from state. */
 export function changed() {
-  bus.dispatchEvent(new Event('change'));
+  if (pending) return;
+  const wait = Math.max(0, REFRESH_MS - (performance.now() - lastNotified));
+  pending = setTimeout(() => {
+    pending = 0;
+    lastNotified = performance.now();
+    bus.dispatchEvent(new Event('change'));
+  }, wait);
 }
 
 export function onChange(listener) {

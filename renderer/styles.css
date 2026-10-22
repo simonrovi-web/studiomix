@@ -390,8 +390,22 @@ dialog.dock {
 .field { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
 .field.check, label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); display: flex; }
 .field output { color: var(--text); font-variant-numeric: tabular-nums; font-size: 11px; }
-.tbar-wrap { display: flex; justify-content: center; padding: 2px 0; }
-#tbar { writing-mode: vertical-lr; direction: rtl; height: 48px; accent-color: var(--warn); }
+/* T-bar: vertical track, T-shaped grip, fill from the start end, readout. */
+.tbar { display: grid; grid-template-columns: 26px 1fr 52px; align-items: stretch; gap: 6px; flex: 1 1 auto; min-height: 60px; max-height: 140px; padding: 4px 6px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); cursor: ns-resize; touch-action: none; user-select: none; }
+.tbar:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tbar-scale { display: flex; flex-direction: column; justify-content: space-between; font-size: 9px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; padding: 2px 0; }
+.tbar-track { position: relative; justify-self: center; width: 10px; border-radius: 5px; background: #07090c; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7); margin: 8px 0; }
+.tbar-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; border-radius: 5px; background: linear-gradient(to top, var(--warn), #ffd27a); }
+.tbar-handle { position: absolute; left: 50%; bottom: 0; width: 64px; height: 18px; transform: translate(-50%, 50%); border-radius: 4px; background: linear-gradient(#e9ecf2, #aab1bf); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), inset 0 1px 0 #fff; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.tbar-handle i { width: 2px; height: 10px; border-radius: 1px; background: rgba(0, 0, 0, 0.35); }
+.tbar.dragging .tbar-handle, .tbar:hover .tbar-handle { background: linear-gradient(#ffffff, #c3c9d4); }
+.tbar-readout { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-variant-numeric: tabular-nums; }
+.tbar-pct { font-size: 15px; color: var(--text); }
+.tbar-dir { font-size: 11px; color: var(--muted); }
+.tbar.active .tbar-pct { color: var(--warn); }
+.tbar.locked .tbar-handle { background: transparent; border: 2px dashed var(--warn); box-shadow: none; }
+.tbar.locked .tbar-handle i { display: none; }
+.tbar.locked .tbar-dir { color: var(--warn); }
 .overlay-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .overlay-buttons button { padding: 6px 4px; font-size: 12px; white-space: nowrap; }
 .overlay-buttons button.on { background: var(--warn); border-color: var(--warn); color: #111; font-weight: 700; }
@@ -599,9 +613,13 @@ kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 
 .stats.collapsed .panel-toggle .chev { transform: rotate(-90deg); }
 .stats.collapsed .charts { display: none; }
 .bottom:has(.stats.collapsed) { grid-template-columns: minmax(0, 1fr) auto; }
-.trans-fields { display: flex; flex-direction: column; gap: 6px; }
-.trans-fields .unit { display: none; color: var(--muted); font-size: 12px; }
+/* Type and duration without stacked labels (the select names the transition,
+   the duration shows "ms"), so the T-bar gets the height. */
+.trans-fields { display: flex; flex-direction: column; gap: 5px; }
+.trans-fields .lbl { display: none; }
+.trans-fields .unit { color: var(--muted); font-size: 12px; }
 .trans-fields .row.nowrap { align-items: center; }
+.trans-fields .duration-field input { width: 84px; }
 
 /* --- Compact mode for short screens (laptops, 768–880 px tall) -------------- */
 /* The monitors get the height: mixer, charts and cards shrink, and the
@@ -613,11 +631,9 @@ kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 
   .transition-panel { gap: 5px; padding-top: 24px; overflow-y: visible; }
   .big { padding: 9px 4px; font-size: 14px; }
   .trans-fields { gap: 4px; }
-  .trans-fields .lbl { display: none; }
-  .trans-fields .unit { display: inline; }
   .trans-fields input, .trans-fields select { padding: 4px 6px; }
   .trans-fields .duration-field input { width: 76px; }
-  #tbar { height: 34px; }
+  .tbar { min-height: 56px; }
   .overlay-buttons { gap: 4px; }
   .overlay-buttons button { padding: 4px; }
   .ftb { padding: 5px; }

@@ -3,9 +3,6 @@
 import { FADER_MAX } from './audio.js';
 import { app, changed, state } from './store.js';
 
-// A physical T-bar stays at the end after a transition, so the next move goes the other way.
-let tbarFlipped = false;
-
 const audioChannelInput = (n) => state.inputs.filter((i) => i.channel)[n - 1] ?? null;
 
 export function handleMidiAction(id, value) {
@@ -29,11 +26,12 @@ export function handleMidiAction(id, value) {
     case 'record':
       actions.toggleOutput(name);
       break;
-    case 'tbar': {
-      const p = (tbarFlipped ? 1 - value : value) * 100;
-      if (compositor.setManual(Math.min(100, p))) tbarFlipped = !tbarFlipped;
-      break;
-    }
+    case 'tbar':
+      // Physical position; the compositor works out direction and completion.
+      // A completed transition refreshes the UI itself (onCommit), so a fader
+      // sending dozens of messages a second doesn't redraw everything each time.
+      compositor.setBar(value * 100, 'midi');
+      return;
     case 'preview':
       if (state.inputs[n - 1]) actions.setPreview(state.inputs[n - 1].id);
       break;

@@ -210,6 +210,7 @@ function registerIpc() {
   ipcMain.handle('webinput:reload', (_event, id) => webinputs.reloadWebInput(String(id)));
   ipcMain.handle('webinput:open', (_event, id, kind, url) => webinputs.openWebWindow(String(id), kind === 'panel' ? 'panel' : 'page', url));
   ipcMain.on('webinput:ack', (_event, id) => webinputs.ackFrame(String(id)));
+  ipcMain.on('webinput:fps', (_event, id, fps) => webinputs.setFrameRate(String(id), Number(fps)));
 
   // --- guests and remote control ---
   ipcMain.handle('guests:info', () => guests.info());

@@ -125,6 +125,12 @@ de 3 s que se puede cancelar.
 
 **Control**
 - Teclado, MIDI (aprender, faders, T-bar, LEDs de tally).
+- **T-bar como en un mezclador de hardware:** se queda donde la dejas; cada
+  transición va de un extremo al otro (al llegar arriba, la siguiente es
+  bajando). Con un fader MIDI ignora el ruido en los extremos, acepta el 99 %
+  como final y, si pulsas AUTO o CUT con la T-bar a medias, la «retoma» cuando
+  vuelve a un extremo para que la imagen no salte. En pantalla se arrastra, se
+  mueve con la rueda o con las flechas.
 - **Mando remoto en el móvil** (☰ → Mando remoto): página web con QR para cortar,
   capas, grabar y volumen, con miniaturas en vivo.
 - **API HTTP/WebSocket** para Stream Deck (Bitfocus Companion, módulo «Generic

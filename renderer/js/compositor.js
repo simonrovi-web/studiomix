@@ -1,4 +1,5 @@
 import { LumaWipe, Stinger } from './transitions.js';
+import { moveTbar, settleTbar } from './tbar.js';
 
 export const LAYOUTS = {
   full: { label: 'Pantalla completa', rect: [0, 0, 1, 1] },
@@ -209,24 +210,39 @@ export class Compositor {
     }
   }
 
-  setManual(value) {
-    const t = this.state.transition;
-    if (t.running) return false;
-    t.manual = value;
-    if (value >= 100) {
-      this.commit();
+  /**
+   * Moves the T-bar to `pos` (0–100) from the on-screen bar ('ui') or a MIDI
+   * fader ('midi'). Returns true when that completed the transition.
+   */
+  setBar(pos, source = 'ui') {
+    const s = this.state;
+    const t = s.transition;
+    const wasIdle = !(t.manual > 0);
+    t.barSource = source;
+    const result = moveTbar(t, pos);
+    // The incoming shot starts its entry the moment the bar leaves the end.
+    if (wasIdle && t.manual > 0) this.byId(s.previewId)?.onShow?.();
+    if (result === 'commit') {
+      if (s.previewId == null || s.previewId === s.programId) {
+        t.manual = 0;
+        settleTbar(t, 'bar');
+        return false;
+      }
+      this.commit('bar');
       return true;
     }
     return false;
   }
 
-  commit() {
+  /** Swaps Preview and Program. `how`: 'cut', 'auto' or 'bar' (the T-bar reached its far end). */
+  commit(how = 'cut') {
     const s = this.state;
     const t = s.transition;
     [s.programId, s.previewId] = [s.previewId, s.programId];
     t.running = false;
     t.manual = 0;
     t.progress = 0;
+    settleTbar(t, how);
     this.onCommit?.();
   }
 
@@ -367,7 +383,7 @@ export class Compositor {
     if (t.running) {
       p = t.from + ((now - t.startedAt) / Math.max(t.activeDuration ?? t.duration, 1)) * (1 - t.from);
       if (p >= 1) {
-        this.commit();
+        this.commit('auto');
         p = 0;
       }
     }
@@ -410,11 +426,18 @@ export class Compositor {
       ctx.globalAlpha = 1;
     }
 
+    // With the window minimized or covered, only what leaves the app still
+    // needs drawing: Program (stream, recording) and anything an output
+    // window or phone monitor is watching.
+    const hidden = document.hidden;
+
     // Preview
-    const vctx = this.vctx;
-    vctx.fillStyle = '#000';
-    vctx.fillRect(0, 0, this.preview.width, this.preview.height);
-    if (preview) this.drawInput(vctx, preview, 0, 0, this.preview.width, this.preview.height, now, 'preview');
+    if (!hidden || this.watchers.preview > 0 || this.watchers.multiview > 0) {
+      const vctx = this.vctx;
+      vctx.fillStyle = '#000';
+      vctx.fillRect(0, 0, this.preview.width, this.preview.height);
+      if (preview) this.drawInput(vctx, preview, 0, 0, this.preview.width, this.preview.height, now, 'preview');
+    }
 
     // Audio follows video: an input is audible as much as it is visible on Program,
     // including as a layer inside a scene.
@@ -430,10 +453,11 @@ export class Compositor {
     for (const input of s.inputs) input.channel?.setPresence(weights.get(input.id) ?? 0);
     this.onMasterFade?.(1 - s.ftb.alpha);
 
-    if ((s.view === 'multiview' || this.watchers.multiview > 0) && this.frame % MULTIVIEW_EVERY === 0) this.renderMultiview(now);
+    if (((s.view === 'multiview' && !hidden) || this.watchers.multiview > 0) && this.frame % MULTIVIEW_EVERY === 0) this.renderMultiview(now);
     if (this.verticalConfig?.()) this.renderVertical(now, this.verticalConfig());
 
-    if (this.frame % THUMB_EVERY === 0) {
+    // Card thumbnails also feed the phone remote, so they slow down rather than stop.
+    if (this.frame % (hidden ? THUMB_EVERY * 10 : THUMB_EVERY) === 0) {
       for (const [id, thumb] of this.thumbs) {
         if (!thumb.visible) continue;
         const input = this.byId(id);

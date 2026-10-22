@@ -147,6 +147,18 @@ function ackFrame(id) {
   flush(page);
 }
 
+/**
+ * Page render rate: its own while shown, a trickle while nobody watches (the
+ * renderer decides). Raising it repaints at once so the picture is current.
+ */
+function setFrameRate(id, fps) {
+  const page = pages.get(id);
+  if (!page || page.win.isDestroyed()) return;
+  const rate = Math.min(60, Math.max(1, Math.round(Number(fps) || 1)));
+  page.win.webContents.setFrameRate(rate);
+  page.win.webContents.invalidate();
+}
+
 async function startWebInput(id, source, opts = {}) {
   stopWebInput(id);
   const url = normalizeWebUrl(source);
@@ -237,6 +249,7 @@ module.exports = {
   reloadWebInput,
   openWebWindow,
   ackFrame,
+  setFrameRate,
   normalizeWebUrl,
   sameSite,
   unionRect,

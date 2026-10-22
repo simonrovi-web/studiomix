@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('studio', {
   reloadWebInput: (id) => ipcRenderer.invoke('webinput:reload', id),
   openWebWindow: (id, kind, url) => ipcRenderer.invoke('webinput:open', id, kind, url),
   ackWebInput: (id) => ipcRenderer.send('webinput:ack', id),
+  setWebInputFps: (id, fps) => ipcRenderer.send('webinput:fps', id, fps),
   onWebInput: (onFrame, onStatus) => {
     ipcRenderer.on('webinput:frame', (_event, id, rect, pixels) => onFrame(id, rect, pixels));
     ipcRenderer.on('webinput:status', (_event, s) => onStatus(s));

@@ -86,3 +86,67 @@ test('web input pixels: premultiplied BGRA becomes straight RGBA, padded rows ar
   const tight = new Uint8ClampedArray(8);
   assert.equal(packRows(tight, 2, 1), tight);
 });
+test('T-bar: a MIDI fader pushed to the top completes once and stays; the way back is the next transition', async () => {
+  const { moveTbar, settleTbar } = await import('../renderer/js/tbar.js');
+  const t = { bar: 0, barFrom: 0, manual: 0, running: false, barSource: 'midi' };
+  const commits = [];
+  // Simulates the compositor: on 'commit' it swaps and settles like commit('bar').
+  const send = (midi) => {
+    if (moveTbar(t, (midi / 127) * 100) === 'commit') {
+      commits.push(midi);
+      t.manual = 0;
+      settleTbar(t, 'bar');
+    }
+  };
+  for (let v = 0; v <= 127; v += 8) send(v);
+  send(127);
+  assert.deepEqual(commits, [127], 'one transition on the way up');
+  assert.equal(t.bar, 100, 'the bar stays at the top (no jump back to 0)');
+  assert.equal(t.manual, 0);
+  // Jitter at the top does not start anything.
+  for (const v of [126, 127, 125, 127]) send(v);
+  assert.equal(t.manual, 0);
+  assert.equal(commits.length, 1);
+  // Halfway down: progress counts from the top.
+  send(64);
+  assert.ok(Math.abs(t.manual - 49.6) < 0.5, `manual ${t.manual}`);
+  for (let v = 64; v >= 0; v -= 8) send(v);
+  assert.deepEqual(commits, [127, 0], 'the way down is the next transition');
+});
+
+test('T-bar: faders that top out at 126 still complete', async () => {
+  const { moveTbar } = await import('../renderer/js/tbar.js');
+  const t = { bar: 0, barFrom: 0, manual: 0, running: false };
+  let result = null;
+  for (let v = 0; v <= 126; v += 6) result = moveTbar(t, (v / 127) * 100) ?? result;
+  assert.equal(moveTbar(t, (126 / 127) * 100), 'commit');
+  assert.equal(result, 'commit');
+});
+
+test('T-bar: after AUTO mid-way a MIDI fader is picked up at an end; the on-screen bar moves to the end', async () => {
+  const { moveTbar, settleTbar, displayedBar } = await import('../renderer/js/tbar.js');
+  const midi = { bar: 0, barFrom: 0, manual: 0, running: false, barSource: 'midi' };
+  moveTbar(midi, 40);
+  assert.equal(midi.manual, 40);
+  midi.manual = 0;
+  settleTbar(midi, 'auto');
+  assert.equal(midi.barLocked, true);
+  moveTbar(midi, 60);
+  assert.equal(midi.manual, 0, 'ignored while locked: no jump');
+  moveTbar(midi, 100);
+  assert.equal(midi.barLocked, false);
+  assert.equal(midi.barFrom, 100);
+  moveTbar(midi, 70);
+  assert.equal(midi.manual, 30);
+
+  const ui = { bar: 0, barFrom: 0, manual: 0, running: false, barSource: 'ui' };
+  ui.running = true;
+  ui.progress = 0.25;
+  assert.equal(displayedBar(ui), 25, 'travels with AUTO');
+  ui.running = false;
+  settleTbar(ui, 'auto');
+  assert.equal(ui.bar, 100);
+  assert.equal(ui.barFrom, 100);
+  settleTbar(ui, 'cut');
+  assert.equal(ui.bar, 100, 'a CUT leaves a resting bar alone');
+});
