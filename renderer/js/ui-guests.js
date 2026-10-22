@@ -3,14 +3,17 @@
 // mix-minus (the show's audio without their own voice).
 import { GuestInput } from './inputs.js';
 import { app, changed, state } from './store.js';
-import { ask, toast } from './ui-common.js';
+import { ask, confirmAction, toast } from './ui-common.js';
 import { $, h } from './util.js';
 
 const peers = new Map(); // guestId -> { pc, name, stream, input, mixMinus }
+// Public STUN lets guests on other networks find a direct path (most home and
+// mobile networks). Same network keeps using local addresses.
+export const ICE_SERVERS = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
 
 function createPeer(guestId) {
   const peer = peers.get(guestId);
-  const pc = new RTCPeerConnection({ iceServers: [] });
+  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
   peer.pc = pc;
   peer.stream = new MediaStream();
   peer.mixMinus = app.audio.createMixMinus();
@@ -26,7 +29,7 @@ function createPeer(guestId) {
     }
   };
   pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'failed') toast(`No se pudo conectar con ${peer.name}. ¿Está en la misma red?`, 'error');
+    if (pc.connectionState === 'failed') toast(`No se pudo conectar con ${peer.name}. Su red no permite la conexión directa; prueba con otra red (por ejemplo, datos móviles) o con Tailscale.`, 'error');
   };
   return pc;
 }
@@ -80,6 +83,39 @@ function onLeave({ guestId }) {
 
 let dialogOpen = false;
 
+const copyable = (u) => h('code', { class: 'copyable', title: 'Clic para copiar', onclick: () => navigator.clipboard.writeText(u).then(() => toast('Enlace copiado')) }, u);
+
+async function openTunnel(tunnel) {
+  if (!tunnel.installed) {
+    const ok = await confirmAction(`Para el enlace por internet se descarga una vez cloudflared (de Cloudflare, en GitHub, ${tunnel.downloadMB} MB) y se comprueba su firma SHA-256. No necesita cuenta. ¿Descargar y abrir el enlace?`, { ok: 'Descargar y abrir' });
+    if (!ok) return;
+  }
+  renderDialog(await window.studio.guestsTunnel(true));
+}
+
+/** Link through a Cloudflare tunnel: the guest only opens it, from any network. */
+function internetSection(tunnel, info) {
+  const title = h('h4', {}, 'Invitados por internet (sin instalar nada)');
+  if (tunnel.state === 'ready' && info.publicUrl) {
+    return h('div', { class: 'stack' }, title,
+      h('div', { class: 'remote-qr' },
+        info.publicQr ? h('img', { src: info.publicQr, alt: 'Código QR de invitación por internet' }) : null,
+        h('div', { class: 'stack' },
+          copyable(info.publicUrl),
+          h('p', { class: 'muted small' }, 'Envía este enlace a tu invitado (WhatsApp, correo…). Lo abre en el navegador del móvil o del ordenador, desde cualquier red, sin avisos de seguridad. Quien tenga el enlace puede entrar: compártelo solo con tus invitados. El enlace cambia cada vez que lo abres.'),
+          h('button', { type: 'button', onclick: async () => renderDialog(await window.studio.guestsTunnel(false)) }, 'Cerrar el enlace por internet'),
+        ),
+      ),
+    );
+  }
+  const busy = tunnel.state === 'downloading' ? `Descargando cloudflared… ${tunnel.progress}%` : tunnel.state === 'starting' ? 'Publicando el enlace en Cloudflare (puede tardar hasta un minuto)…' : null;
+  return h('div', { class: 'stack' }, title,
+    h('p', { class: 'muted small' }, 'Crea un enlace público https para invitados de otras casas o ciudades. El vídeo y el audio van directos entre los equipos; algunas redes muy cerradas (empresas, ciertas operadoras) no lo permiten y entonces queda Tailscale.'),
+    tunnel.state === 'error' ? h('p', { class: 'warn-text' }, tunnel.error) : null,
+    busy ? h('p', {}, busy) : h('button', { type: 'button', class: 'accent', onclick: () => openTunnel(tunnel) }, tunnel.state === 'error' ? 'Reintentar' : 'Abrir enlace por internet'),
+  );
+}
+
 async function renderDialog(info) {
   if (!dialogOpen) return;
   info ??= await window.studio.guestsInfo();
@@ -101,6 +137,7 @@ async function renderDialog(info) {
         h('p', { class: 'muted small' }, 'El invitado verá un aviso de seguridad la primera vez (el certificado es de este equipo): debe pulsar «Configuración avanzada» → «Continuar». Recibe lo que se emite y oye el programa sin su propia voz.'),
       ),
     ),
+    internetSection(info.tunnel, info),
     h('h4', {}, 'Invitados fuera de tu red (Tailscale)'),
     info.tailscaleUrls?.length
       ? h('div', { class: 'remote-qr' },
@@ -141,5 +178,6 @@ export async function openGuests() {
 
 export function initGuests() {
   window.studio.onGuests({ join: onJoin, leave: onLeave, signal: onSignal });
+  window.studio.onTunnelStatus(() => renderDialog());
   app.actions.openGuests = openGuests;
 }

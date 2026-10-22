@@ -50,6 +50,8 @@ contextBridge.exposeInMainWorld('studio', {
   guestsEnable: (enabled, opts) => ipcRenderer.invoke('guests:enable', enabled, opts),
   guestSignal: (guestId, data) => ipcRenderer.send('guest:signal', guestId, data),
   guestKick: (guestId) => ipcRenderer.invoke('guest:kick', guestId),
+  guestsTunnel: (enabled) => ipcRenderer.invoke('guests:tunnel', enabled),
+  onTunnelStatus: (handler) => ipcRenderer.on('guests:tunnel-status', (_event, status) => handler(status)),
   onGuests: (handlers) => {
     ipcRenderer.on('guest:join', (_event, p) => handlers.join(p));
     ipcRenderer.on('guest:leave', (_event, p) => handlers.leave(p));

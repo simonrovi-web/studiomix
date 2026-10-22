@@ -109,9 +109,15 @@ de 3 s que se puede cancelar.
   en un mensaje para ponerlo en pantalla.
 - **Invitados remotos** por enlace o QR desde el navegador del móvil u ordenador,
   en la misma red. Reciben la salida del programa y un **mix-minus** (oyen todo
-  menos su propia voz). El servidor usa un certificado propio: el invitado acepta
-  un aviso de seguridad la primera vez. Para invitados por Internet haría falta un
-  servidor de retransmisión (TURN) y abrir puertos, que no se incluyen.
+  menos su propia voz). En la red local el servidor usa un certificado propio: el
+  invitado acepta un aviso de seguridad la primera vez.
+- **Invitados por internet, sin instalar nada:** «Abrir enlace por internet» crea
+  un túnel gratuito de Cloudflare (sin cuenta) y da un enlace
+  `https://….trycloudflare.com` con certificado válido. La primera vez descarga
+  `cloudflared` (versión fijada y comprobada por SHA-256) tras pedir permiso. El
+  túnel solo lleva la página y la señalización; vídeo y audio van directos entre
+  los equipos (STUN), así que redes muy cerradas sin conexión directa no
+  funcionan (no hay servidor TURN): para ellas queda Tailscale.
 
 **Salidas a pantallas y monitores** (botón 🖥 de la barra superior)
 - **Program, Preview o Multiview a pantalla completa** en cualquier monitor,
@@ -211,6 +217,7 @@ que no se actualiza sola, ofrece descargar la nueva desde GitHub.
   - `log.js`: registro en `%APPDATA%\StudioMix\logs\main.log` (incluye errores de la interfaz).
   - `remote.js`: servidor HTTP/WebSocket de la API y del mando (`remote/`).
   - `guests.js`: servidor HTTPS de invitados y señalización WebRTC (`guest/`).
+  - `tunnel.js`: túnel de Cloudflare para invitados por internet (`cloudflared`).
 - `renderer/js/`: `app.js` crea los servicios y arranca la interfaz;
   `actions.js` reúne las acciones (botones, teclado, MIDI, API); compositor
   (Program, Preview, multiview, vertical), efectos WebGL2, segmentación, audio

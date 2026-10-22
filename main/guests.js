@@ -37,11 +37,14 @@ class GuestServer {
   }
 
   loadConfig() {
+    const defaults = { port: 8089, code: crypto.randomBytes(5).toString('hex') };
     try {
-      return { port: 8089, ...JSON.parse(fs.readFileSync(this.configFile, 'utf8')) };
+      const saved = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
+      // Without a code the link would carry "undefined" and nobody could enter.
+      return { ...defaults, ...saved, code: typeof saved.code === 'string' && saved.code ? saved.code : defaults.code };
     } catch (err) {
       if (err.code !== 'ENOENT') log.warn('La configuración de invitados no es válida; se crea una nueva:', err.message);
-      return { port: 8089, code: crypto.randomBytes(5).toString('hex') };
+      return defaults;
     }
   }
 
@@ -71,8 +74,10 @@ class GuestServer {
     return !!this.server?.listening;
   }
 
-  async info() {
+  /** @param {string|null} publicBase https address of the internet tunnel, when open. */
+  async info(publicBase = null) {
     const link = (ip) => `https://${ip}:${this.config.port}/guest?c=${this.config.code}`;
+    const publicUrl = publicBase ? `${publicBase}/guest?c=${this.config.code}` : null;
     const urls = lanAddresses().map(link);
     // Guests outside the local network who joined this computer's tailnet.
     const tailscaleUrls = tailscaleAddresses().map(link);
@@ -83,6 +88,8 @@ class GuestServer {
       qr: urls[0] ? await QRCode.toDataURL(urls[0], { margin: 1, width: 220 }) : null,
       tailscaleUrls,
       tailscaleQr: tailscaleUrls[0] ? await QRCode.toDataURL(tailscaleUrls[0], { margin: 1, width: 220 }) : null,
+      publicUrl,
+      publicQr: publicUrl ? await QRCode.toDataURL(publicUrl, { margin: 1, width: 220 }) : null,
       guests: [...this.guests.entries()].map(([id, g]) => ({ id, name: g.name })),
       error: this.lastError,
     };

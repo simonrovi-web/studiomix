@@ -41,7 +41,7 @@
 
   async function start() {
     if (!window.isSecureContext || !navigator.mediaDevices) {
-      showError('Abre el enlace con https:// (y acepta el aviso del certificado) para poder usar la cámara.');
+      showError('Abre el enlace completo que empieza por https:// para poder usar la cámara.');
       return;
     }
     try {
@@ -75,8 +75,8 @@
     ws.onmessage = async (e) => {
       const msg = JSON.parse(e.data);
       if (msg.type === 'welcome') {
-        // Same network: no STUN/TURN needed.
-        pc = new RTCPeerConnection({ iceServers: [] });
+        // Public STUN finds a direct path from other networks; on the same network local addresses win.
+        pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }] });
         local.getTracks().forEach((t) => pc.addTrack(t, local));
         pc.addTransceiver('video', { direction: 'recvonly' });
         pc.addTransceiver('audio', { direction: 'recvonly' });

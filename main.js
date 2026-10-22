@@ -31,12 +31,14 @@ const stingers = require('./main/stingers');
 const gpu = require('./main/gpu');
 const { RemoteServer, lanAddresses } = require('./main/remote');
 const { GuestServer } = require('./main/guests');
+const { GuestTunnel } = require('./main/tunnel');
 
 const log = logger.scope('main');
 const rendererLog = logger.scope('renderer');
 
 let remote = null;
 let guests = null;
+let tunnel = null;
 let pendingDisplaySource = null;
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -213,8 +215,19 @@ function registerIpc() {
   ipcMain.on('webinput:fps', (_event, id, fps) => webinputs.setFrameRate(String(id), Number(fps)));
 
   // --- guests and remote control ---
-  ipcMain.handle('guests:info', () => guests.info());
-  ipcMain.handle('guests:enable', (_event, enabled, opts) => guests.setEnabled(!!enabled, opts || {}));
+  const guestsInfo = async () => ({ ...(await guests.info(tunnel.status.url)), tunnel: tunnel.info() });
+  ipcMain.handle('guests:info', guestsInfo);
+  ipcMain.handle('guests:enable', async (_event, enabled, opts) => {
+    // Restarting the server (or a new code) leaves the tunnel pointing at the same port.
+    if (!enabled) await tunnel.stop();
+    await guests.setEnabled(!!enabled, opts || {});
+    return guestsInfo();
+  });
+  ipcMain.handle('guests:tunnel', async (_event, enabled) => {
+    if (!enabled) await tunnel.stop();
+    else if (guests.running) await tunnel.start(guests.config.port);
+    return guestsInfo();
+  });
   ipcMain.on('guest:signal', (_event, guestId, data) => guests.signal(String(guestId), data));
   ipcMain.handle('guest:kick', (_event, guestId) => guests.kick(String(guestId)));
 
@@ -303,6 +316,10 @@ app.whenReady().then(() => {
     dir: app.getPath('userData'),
     send: (channel, payload) => context.send(channel, payload),
   });
+  tunnel = new GuestTunnel({
+    dir: app.getPath('userData'),
+    onChange: (status) => context.send('guests:tunnel-status', status),
+  });
   registerIpc();
   createWindow();
   screens.watchDisplays();
@@ -328,6 +345,7 @@ app.on('will-quit', () => {
   netinputs.stopAllNetInputs();
   webinputs.stopAllWebInputs();
   gpu.monitor.stop();
+  tunnel?.stop();
   // A clean exit removes the lock, so the autosave isn't offered as a recovery.
   projects.endSessionLock();
   log.info('Cierre normal');

@@ -165,3 +165,26 @@ test('web inputs: pages stay on their site, and paint rectangles merge and clamp
   assert.deepEqual(clampRect({ x: -5, y: 1070, width: 30, height: 40 }, { width: 1920, height: 1080 }), { x: 0, y: 1070, width: 25, height: 10 });
   assert.equal(clampRect({ x: 2000, y: 0, width: 10, height: 10 }, { width: 1920, height: 1080 }), null);
 });
+test('guest tunnel: finds the public address in cloudflared output', async () => {
+  const { parseTunnelUrl, CLOUDFLARED } = require('../main/tunnel.js');
+  assert.equal(parseTunnelUrl('2026-10-22T19:00:00Z INF |  https://calm-river-tide-42.trycloudflare.com                    |'), 'https://calm-river-tide-42.trycloudflare.com');
+  assert.equal(parseTunnelUrl('INF Requesting new quick Tunnel on trycloudflare.com...'), null);
+  assert.equal(parseTunnelUrl('see https://www.cloudflare.com/website-terms/'), null);
+  assert.match(CLOUDFLARED.sha256, /^[0-9a-f]{64}$/);
+  assert.match(CLOUDFLARED.url, new RegExp(`/download/${CLOUDFLARED.version}/`));
+});
+
+test('guest config without a code gets one, so links never say "undefined"', async () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const { GuestServer } = require('../main/guests.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-guests-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'guests.json'), JSON.stringify({ port: 18089 }));
+    const server = new GuestServer({ dir, send() {} });
+    assert.equal(server.config.port, 18089);
+    assert.match(server.config.code, /^[0-9a-f]{10}$/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
