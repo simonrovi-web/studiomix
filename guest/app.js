@@ -69,6 +69,9 @@
     const name = $('#name').value.trim() || 'Invitado';
     localStorage.setItem('studiomix-guest-name', name);
     if (!local) return showError('Primero permite el acceso a la cámara y el micrófono.');
+    // One connection per page: a repeated tap must not join a second time.
+    if (ws) return undefined;
+    $('#enter').disabled = true;
     $('#join').hidden = true;
     $('#call').hidden = false;
     ws = new WebSocket(`wss://${location.host}/guest-ws?c=${encodeURIComponent(code)}&name=${encodeURIComponent(name)}`);
