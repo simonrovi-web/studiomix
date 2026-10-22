@@ -34,6 +34,11 @@ import { $ } from './util.js';
 const audio = new AudioEngine();
 await audio.init();
 audio.setLimiter(state.settings.limiter);
+if (state.settings.monitorDevice) {
+  audio.setOutputDevice(state.settings.monitorDevice).catch(() => {
+    toast('La salida de audio elegida para la escucha no está conectada; se usa la predeterminada.', 'error');
+  });
+}
 
 const compositor = new Compositor(state, $('#program-canvas'), $('#preview-canvas'), $('#multiview-canvas'));
 compositor.configure(state.settings.width, state.settings.height, state.settings.fps);

@@ -18,6 +18,8 @@ export const DEFAULT_SETTINGS = {
   recordFormat: 'mp4',
   recordMbps: 16,
   limiter: true,
+  // Audio output for the headphone monitor and per-channel monitoring ('' = system default).
+  monitorDevice: '',
   stinger: { path: '', cutPoint: 500, htmlDurationMs: 2000 },
   luma: { pattern: 'linearH', softness: 0.1, invert: false },
   replaySeconds: 20,

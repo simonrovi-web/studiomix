@@ -1,7 +1,7 @@
 // Top-bar output buttons (stream, record, replay) and the settings dialog.
 
 import { DEFAULT_SETTINGS, app, changed, saveSettings, state } from './store.js';
-import { ask, fillSelect } from './ui-common.js';
+import { ask, fillSelect, toast } from './ui-common.js';
 import { setLimiter } from './ui-mixer.js';
 import { destinationReady } from './ui-guide.js';
 import { render as renderVertical } from './ui-vertical.js';
@@ -129,6 +129,15 @@ function renderDestinations(list) {
   );
 }
 
+/** Lists sound cards for monitoring; a saved one that is unplugged stays selectable. */
+async function fillOutputDevices(select, current) {
+  const devices = (await navigator.mediaDevices.enumerateDevices().catch(() => []))
+    .filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications');
+  const options = [['', 'Predeterminada del sistema'], ...devices.map((d, i) => [d.deviceId, d.label || `Salida de audio ${i + 1}`])];
+  if (current && !devices.some((d) => d.deviceId === current)) options.push([current, 'Dispositivo desconectado']);
+  fillSelect(select, options, current);
+}
+
 export async function openSettings() {
   const { outputs, compositor } = app;
   const { encoders, info } = system;
@@ -146,6 +155,7 @@ export async function openSettings() {
   form.streamVideoKbps.value = s.streamVideoKbps;
   form.audioKbps.value = s.audioKbps;
   form.limiter.checked = s.limiter;
+  await fillOutputDevices(form.monitorDevice, s.monitorDevice);
   form.replaySeconds.value = s.replaySeconds;
   form.replayAsInput.checked = s.replayAsInput;
   form.isoRecording.checked = !!s.isoRecording;
@@ -194,6 +204,14 @@ export async function openSettings() {
   s.replayAsInput = form.replayAsInput.checked;
   s.isoRecording = form.isoRecording.checked;
   setLimiter(form.limiter.checked);
+  if (form.monitorDevice.value !== s.monitorDevice) {
+    try {
+      await app.audio.setOutputDevice(form.monitorDevice.value);
+      s.monitorDevice = form.monitorDevice.value;
+    } catch (err) {
+      toast(`No se pudo cambiar la salida de escucha: ${err.message}`, 'error');
+    }
+  }
   saveSettings();
   if (videoChanged && !outputs.busyMain) compositor.configure(width, height, fps);
   changed();

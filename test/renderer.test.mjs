@@ -188,3 +188,14 @@ test('MIDI learn: buttons take notes or CC, faders only CC, one control does one
   assert.deepEqual(fired.at(-1), ['click:btn-chat', 1]);
   assert.equal(getAction('nonsense'), null);
 });
+
+test('recording asks for H.264 High at the lowest level that fits', async () => {
+  const { h264HighCodec } = await import('../renderer/js/outputs.js');
+  assert.equal(h264HighCodec(1920, 1080, 30), 'avc1.640028'); // 4.0
+  assert.equal(h264HighCodec(1080, 1920, 30), 'avc1.640028'); // vertical 1080×1920
+  assert.equal(h264HighCodec(1920, 1080, 60), 'avc1.64002A'); // 4.2
+  assert.equal(h264HighCodec(2560, 1440, 30), 'avc1.640032'); // 5.0
+  assert.equal(h264HighCodec(3840, 2160, 30), 'avc1.640033'); // 5.1
+  assert.equal(h264HighCodec(3840, 2160, 60), 'avc1.640034'); // 5.2
+  assert.equal(h264HighCodec(1280, 720, 30), 'avc1.640028');
+});

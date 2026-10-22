@@ -90,7 +90,8 @@ de 3 s que se puede cancelar.
   AFV (el audio sigue al vídeo).
 - **Ducking:** marca un canal como «voz» y otros como «bajar cuando hay voz»; la
   música baja sola mientras se habla.
-- Master con limitador y escucha.
+- Master con limitador y escucha. La escucha (auriculares y monitor de cada
+  canal) puede ir a otra tarjeta de sonido: **Ajustes → Salida de escucha**.
 
 **Salidas**
 - Multistream con una sola codificación, en GPU (NVENC, Quick Sync, AMF) o CPU.
@@ -100,7 +101,7 @@ de 3 s que se puede cancelar.
   destinos y grabación. Puede reencuadrar Program o usar una entrada o escena
   propia; los rótulos colocados a un lado de la imagen 16:9 pueden quedar fuera
   del recorte, para eso está la «Capa gráfica encima» del vertical.
-- Grabación MP4/MKV con pausa, **grabación ISO** (cada fuente en su archivo),
+- Grabación MP4/MKV en H.264 perfil High (nivel según resolución y fps) con pausa, **grabación ISO** (cada fuente en su archivo),
   repetición instantánea y capturas.
 
 **Audiencia e invitados**

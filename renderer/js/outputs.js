@@ -5,18 +5,42 @@
 // Outputs are keyed: 'stream', 'record', 'replay', 'vstream' (vertical stream)
 // and 'iso:<inputId>' (per-camera recordings). Network streams reconnect on
 // their own with back-off once they had connected at least once.
-const MIME_CANDIDATES = [
-  ['video/x-matroska;codecs=avc1,opus', 'h264'],
-  ['video/webm;codecs=h264,opus', 'h264'],
-  ['video/webm;codecs=vp9,opus', 'vp9'],
-  ['video/webm;codecs=vp8,opus', 'vp8'],
-];
-
 const RECONNECTING_KINDS = new Set(['stream', 'vstream']);
 const MAX_RETRY_DELAY = 30;
 
-function pickMime() {
-  for (const [mime, codec] of MIME_CANDIDATES) {
+// H.264 levels: [level_idc, max macroblocks per second, max macroblocks per frame].
+const H264_LEVELS = [
+  [0x28, 245760, 8192], // 4.0: 1080p30
+  [0x2a, 522240, 8704], // 4.2: 1080p60
+  [0x32, 589824, 22080], // 5.0: 1440p30
+  [0x33, 983040, 36864], // 5.1: 2160p30
+  [0x34, 2073600, 36864], // 5.2: 2160p60
+];
+
+/**
+ * Codec string asking for H.264 High profile at the lowest level that fits
+ * the picture (players reject files above their level). Without a profile
+ * Chromium encodes Constrained Baseline, which needs more bits for the same
+ * quality.
+ */
+export function h264HighCodec(width, height, fps) {
+  const frameMbs = Math.ceil(width / 16) * Math.ceil(height / 16);
+  const rate = frameMbs * Math.ceil(fps || 30);
+  const level = H264_LEVELS.find(([, maxRate, maxFrame]) => rate <= maxRate && frameMbs <= maxFrame) ?? H264_LEVELS.at(-1);
+  return `avc1.6400${level[0].toString(16).padStart(2, '0').toUpperCase()}`;
+}
+
+/** Best format MediaRecorder offers for this video track: H.264 High, then any H.264, then VP9/VP8. */
+function pickMime(track, fps) {
+  const { width = 1920, height = 1080, frameRate } = track?.getSettings?.() ?? {};
+  const candidates = [
+    [`video/x-matroska;codecs=${h264HighCodec(width, height, frameRate || fps)},opus`, 'h264'],
+    ['video/x-matroska;codecs=avc1,opus', 'h264'],
+    ['video/webm;codecs=h264,opus', 'h264'],
+    ['video/webm;codecs=vp9,opus', 'vp9'],
+    ['video/webm;codecs=vp8,opus', 'vp8'],
+  ];
+  for (const [mime, codec] of candidates) {
     if (MediaRecorder.isTypeSupported(mime)) return { mime, codec };
   }
   throw new Error('Este equipo no puede codificar vídeo con MediaRecorder.');
@@ -91,9 +115,10 @@ export class OutputManager {
   /** Spawns FFmpeg and a fresh MediaRecorder for an entry (also used to reconnect). */
   async launch(entry) {
     const s = this.opts.settings();
-    const { mime, codec } = pickMime();
     const tracks = (entry.tracks ?? this.opts.tracksFor(entry.kind)).filter(Boolean);
-    if (!tracks.some((t) => t.kind === 'video')) throw new Error('No hay vídeo que enviar.');
+    const video = tracks.find((t) => t.kind === 'video');
+    if (!video) throw new Error('No hay vídeo que enviar.');
+    const { mime, codec } = pickMime(video, s.fps);
     entry.id = `${entry.key}-${Date.now()}`;
     entry.connected = false;
     entry.stats = null;

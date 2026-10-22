@@ -304,6 +304,16 @@ export class AudioEngine {
     }
   }
 
+  /**
+   * Sends monitoring (headphones, per-channel monitor) to another sound card.
+   * The stream and recordings are unaffected: they take the mix from `dest`.
+   */
+  async setOutputDevice(deviceId = '') {
+    if (typeof this.ctx.setSinkId !== 'function') throw new Error('Este equipo no permite elegir la salida de audio.');
+    if (this.ctx.sinkId === deviceId) return;
+    await this.ctx.setSinkId(deviceId);
+  }
+
   setLimiter(on) {
     if (on === this.limiterOn) return;
     this.limiterOn = on;
